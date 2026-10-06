@@ -1,0 +1,22 @@
+{
+  "name": "pms-mobile",
+  "version": "0.1.0",
+  "description": "Capacitor Android shell for the Peckers web app (remote mode — no business logic)",
+  "scripts": {
+    "sync": "cap sync android",
+    "open:android": "cap open android",
+    "assets": "capacitor-assets generate --android"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5"
+  }
+}

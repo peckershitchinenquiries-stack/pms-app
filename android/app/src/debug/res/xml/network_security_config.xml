@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Android 9+ blocks cleartext by default, so server.cleartext alone is
+         not enough to reach the LAN dev server. Scoped to the dev host only;
+         everything else still requires HTTPS.
+         Update this domain whenever the machine's DHCP address changes. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">192.168.31.177</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

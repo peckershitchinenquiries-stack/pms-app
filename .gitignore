@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Release signing — NEVER commit. Losing these means no installed APK can
+# ever be updated again; the keystore is backed up outside this repo.
+*.keystore
+*.jks
+keystore.properties
+android/keystore.properties
+
+# Firebase config (added in Task 5 for push); carries project identifiers
+google-services.json
+
+# Android build output / machine-local paths
+android/local.properties
+android/.gradle/
+android/app/build/
+android/build/
+android/captures/
+build/
+*.apk
+*.aab
+
+# Capacitor copies the webDir into here on sync
+android/app/src/main/assets/public/
+
+# Editor / OS
+.idea/
+*.iml
+.DS_Store
+Thumbs.db

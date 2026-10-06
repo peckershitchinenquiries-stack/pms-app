@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches viewport.themeColor in the web app's app/layout.tsx and
+         theme_color in public/manifest.webmanifest. Any other value shows as a
+         seam between the native chrome and the page. -->
+    <color name="colorPrimary">#0f0f0f</color>
+    <color name="colorPrimaryDark">#0f0f0f</color>
+    <color name="colorAccent">#0f0f0f</color>
+    <color name="splashBackground">#0f0f0f</color>
+</resources>

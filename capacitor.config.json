@@ -1,0 +1,13 @@
+{
+  "appId": "uk.co.peckers.app",
+  "appName": "Peckers",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": true
+  },
+  "server": {
+    "androidScheme": "https",
+    "url": "http://192.168.31.177:3000",
+    "cleartext": true
+  }
+}

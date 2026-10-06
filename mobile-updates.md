@@ -184,3 +184,85 @@ release" rule into something the build system enforces.
 3. The LAN IP `192.168.31.177` is DHCP-assigned and appears in **two** places —
    `capacitor.config.json` and `network_security_config.xml`. Both must change
    together when it moves.
+
+---
+
+### Update 2: First debug APK built and staged for device install
+
+**Date:** 2026-10-06
+**Type:** Build
+**Scope:** Local Android toolchain, debug build output
+**Files Modified:**
+- `android/local.properties` *(new, gitignored — machine-local SDK path)*
+- `mobile-updates.md`
+- *(no tracked source changed; the APK is build output and stays untracked)*
+
+**Summary:**
+Installed the Android SDK command-line tools and JDK 21 on this machine and
+produced the first debug APK. Copied it to `C:\NextJs\pms-apk\peckers-debug.apk`
+for manual transfer to a phone. This closes the "app builds" criterion of
+Task 2; install and on-device verification remain with the user.
+
+**Changes:**
+1. Installed Android SDK command-line tools 16111833 to
+   `C:\Users\landa\AppData\Local\Android\Sdk`, then `platform-tools`,
+   `platforms;android-36` and `build-tools;36.0.0` via the new `android sdk`
+   CLI. **Android Studio was not installed** — roughly 700 MB of SDK instead
+   of ~8 GB of IDE.
+2. **Installed Temurin JDK 21.0.12.1** to
+   `AppData\Local\Programs\Eclipse Adoptium\jdk-21.0.12.1+1`. The machine's
+   existing JDK 17 was rejected: Capacitor 8's `capacitor-android` module
+   compiles with `sourceCompatibility 21`, so the build failed with
+   `invalid source release: 21`. JDK 17 is the documented floor for Capacitor
+   8 generally, but **not** for this version's bundled Android module — 21 is
+   required in practice, not merely recommended.
+3. Wrote `android/local.properties` with `sdk.dir` using **forward slashes**.
+   The first attempt used single backslashes and the build failed with
+   `java.io.IOException: The filename, directory name, or volume label syntax
+   is incorrect` — a Java properties file reads `\U`, `\A`, `\L` as invalid
+   escapes and silently mangles the path. Forward slashes avoid the escaping
+   question entirely.
+4. `gradlew assembleDebug` → BUILD SUCCESSFUL, 93 tasks, 1m 32s.
+5. Copied the output to `C:\NextJs\pms-apk\peckers-debug.apk` (5.0 MB), a
+   folder outside both repos so the APK is never at risk of being committed.
+
+**Rationale:**
+Keeping the toolchain to the command-line SDK rather than Android Studio keeps
+the machine lean and makes the build reproducible from a script later, which
+Task 4's signed release will want. Recording the JDK 21 requirement and the
+`local.properties` escaping here means neither failure costs anyone time twice.
+
+**Testing:**
+- `gradlew assembleDebug`: ✓ BUILD SUCCESSFUL in 1m 32s
+- `aapt2 dump badging` on the built APK:
+  - ✓ `package: name='uk.co.peckers.app'` — the permanent appId
+  - ✓ `application-label:'Peckers'`
+  - ✓ `minSdkVersion:'24'`, `targetSdkVersion:'36'`
+  - ✓ `uses-implied-feature: android.hardware.screen.portrait` — portrait lock
+    is live in the built artifact, not just the source manifest
+  - ✓ adaptive launcher icon at `res/mipmap-anydpi-v26/ic_launcher.xml`
+  - ✓ `launchable-activity: uk.co.peckers.app.MainActivity`
+- Unpacked `assets/capacitor.config.json` from inside the APK: ✓ carries
+  `server.url = http://192.168.31.177:3000` and `cleartext: true`
+- 29 launcher icon entries and 30 splash entries present in the archive
+- **NOT TESTED — requires a device:** install, launch, icon and splash as
+  rendered, portrait behaviour in the hand, login, session persistence across
+  an app restart.
+
+**Impact:**
+- **Users:** none. The APK is debug-signed and on this machine only. It must
+  not reach staff until Tasks 5 and 6 restore shift reminders.
+- **Web app:** `C:\NextJs\peckers-cashflow` not modified; `git status` clean.
+- **Build/Release:** the project is now buildable on this machine. `JAVA_HOME`
+  must point at the JDK 21 install for every build — it is **not** set
+  persistently, so a new shell needs it set or the build fails again with
+  `invalid source release: 21`.
+
+**Still open on Task 2:**
+1. `ACCESS_FINE_LOCATION` is absent, so clock-in will fail in the app. Task 7,
+   but it makes this build look broken to anyone who tries the core feature.
+2. The launcher icon is a wordmark on a dark square and will be hard to read at
+   48dp. A square 1024×1024 master would fix it; `npm run assets` regenerates.
+3. `192.168.31.177` is baked into the APK. A DHCP change means editing
+   `capacitor.config.json` **and** `network_security_config.xml`, then
+   rebuilding.

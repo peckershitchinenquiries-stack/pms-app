@@ -3,7 +3,8 @@
   "appName": "Peckers",
   "webDir": "www",
   "android": {
-    "allowMixedContent": true
+    "allowMixedContent": true,
+    "appendUserAgent": "PeckersApp/1"
   },
   "server": {
     "androidScheme": "https",

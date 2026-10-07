@@ -33,4 +33,23 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Clock-in is geofence-gated. The WebView's navigator.geolocation routes
+         straight to Android's location services, and Capacitor's
+         BridgeWebChromeClient.onGeolocationPermissionsShowPrompt already
+         requests these two at the moment the page first calls getCurrentPosition
+         / watchPosition. Declaring BOTH is required, not optional: Android 12+
+         shows the Precise / Approximate toggle only when FINE and COARSE are
+         requested together, and a permission absent from the manifest is
+         auto-denied without a prompt.
+         Approximate-only (COARSE granted, FINE refused) still returns a
+         position — at 1-3km accuracy, which reads as out of range against a
+         250m geofence. The web UI needs to name that case specifically. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- A device with no GPS hardware can still use the app for everything
+         except clocking in, so location must not become an install filter. -->
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <uses-feature android:name="android.hardware.location" android:required="false" />
 </manifest>

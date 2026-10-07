@@ -8,7 +8,6 @@
   },
   "server": {
     "androidScheme": "https",
-    "url": "http://localhost:3000",
-    "cleartext": true
+    "url": "https://peckers-cashflow-git-feat-mobile-geolocation-peckerschicken.vercel.app"
   }
 }

@@ -10,6 +10,7 @@
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize"
             android:name=".MainActivity"
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
@@ -34,6 +35,11 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- The native offline screen asks ConnectivityManager whether a network
+         exists before it offers a retry, and listens for one coming back so it
+         can recover without a tap. Both need this; it is not runtime-granted. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <!-- Clock-in is geofence-gated. The WebView's navigator.geolocation routes
          straight to Android's location services, and Capacitor's
          BridgeWebChromeClient.onGeolocationPermissionsShowPrompt already
@@ -47,6 +53,15 @@
          250m geofence. The web UI needs to name that case specifically. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Shift reminders arrive as native FCM pushes. The push-notifications
+         plugin annotates POST_NOTIFICATIONS for its runtime request, but does
+         NOT declare it in its own manifest - and Android auto-denies a
+         permission missing from the merged manifest, with no prompt shown. On
+         API 33+ requestPermissions() goes through requestPermissionForAlias,
+         so without this line every app user would silently have reminders off.
+         Same trap as the location permissions in Update 3. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- A device with no GPS hardware can still use the app for everything
          except clocking in, so location must not become an install filter. -->

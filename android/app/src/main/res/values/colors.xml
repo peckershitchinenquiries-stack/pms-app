@@ -7,4 +7,13 @@
     <color name="colorPrimaryDark">#0f0f0f</color>
     <color name="colorAccent">#0f0f0f</color>
     <color name="splashBackground">#0f0f0f</color>
+
+    <!-- Native offline screen. Fixed dark values, not DayNight: the window
+         background and the splash are #0f0f0f either way, so a light variant
+         would flash against them. -->
+    <color name="offlineBackground">#0f0f0f</color>
+    <color name="offlineText">#f4f4f5</color>
+    <color name="offlineMutedText">#a1a1aa</color>
+    <color name="offlineButton">#f4f4f5</color>
+    <color name="offlineButtonText">#0f0f0f</color>
 </resources>

@@ -95,15 +95,26 @@ Must go in **`peckers-cashflow`**, never here:
 | --- | --- | --- |
 | 1 | Decide the approach: Capacitor remote mode vs rewrite | ✅ done — remote mode chosen |
 | 2 | **Scaffold this repo: Capacitor + Android, icons, splash, portrait, LAN dev server** | ✅ **done (Update 1)** |
-| 3 | Vercel preview + production `server.url` environments, build variants | ⬜ |
-| 4 | Release keystore, signed release build, APK distribution to staff | ⬜ |
-| 5 | Native push: FCM in the shell + token registration from the web app | ⬜ |
-| 6 | Server-side native push sending — shift reminders reach app users | ⬜ |
-| 7 | Native polish: status bar, splash timing, back button, geolocation permission prompts | ⬜ |
-| 8 | Device testing across the real staff phone estate | ⬜ |
+| 3 | Vercel preview + production `server.url` environments, build variants | ✅ **done (Updates 3–5, 9)** — all three environments now live in `config/` behind `npm run env:lan|preview|prod`; Deployment Protection off |
+| 4 | Release keystore, signed release build, APK distribution to staff | ✅ **done (Update 9)** — keystore generated and gitignored, Gradle signing wired, v2+v3 signed release verified. See `RELEASE.md`. A production release still waits on the web branch merging. |
+| 5 | Native push: FCM in the shell + token registration from the web app | ✅ **done (Update 7 here, Update 251 in the web repo)** — Firebase project created, `google-services.json` in place, real token issued on a device |
+| 6 | Server-side native push sending — shift reminders reach app users | ✅ **done (Update 8 here, Updates 252–253 in the web repo)** — `FIREBASE_SERVICE_ACCOUNT` set on the preview environment and a reminder confirmed on a device |
+| 7 | Native polish: back button, offline screen, session durability, screen edges, reload-on-resume, status bar, splash timing, geolocation permission prompts | ✅ **mostly done (Updates 3 and 6)** — geolocation permissions, back button, offline retry screen, cookie flush, inset/keyboard verification and the resume version check are all in. Status bar styling and splash timing are untouched, and every Update 6 behaviour is still unverified on a device. |
+| 8 | Device testing across the real staff phone estate | ⬜ — now carries the whole Update 6 acceptance list |
 | 9 | Staff rollout | ⬜ |
 
-**We are on Task 2.** Update this table whenever a task completes.
+**Open: Task 7 leftovers (status bar styling, splash timing,
+`onRenderProcessGone`, the FCM notification channel and small icon), Task 8
+device testing, and Task 9 rollout.** Task 9 additionally waits on
+`feat/mobile-geolocation` reaching production — until it does, an APK built
+with `npm run env:prod` gives staff no reminders at all. Update this table
+whenever a task completes.
+
+> **Two numberings are in play.** This table is the one every
+> `mobile-updates.md` entry refers to — "Task 4" in the log always means
+> keystore and signing. The working plan used in conversation numbers the
+> native-behaviour work (Update 6) as its own "Task 4"; in this table that work
+> is Task 7. When a log entry cites a task number, it is this table's.
 
 ---
 
@@ -121,14 +132,17 @@ Must go in **`peckers-cashflow`**, never here:
 
 ## The three `server.url` environments
 
-Only one is active at a time, in `capacitor.config.json`. Changing it requires
-`npx cap sync android` and a rebuild.
+Each one is a file in `config/`, selected by a script that copies it over
+`capacitor.config.json` and runs `cap sync` — never hand-edit the root config,
+because a forgotten sync ships the PREVIOUS environment inside the APK:
 
-| Environment | `server.url` | Extra config | Use |
+| Environment | Command | `server.url` | Extra config |
 | --- | --- | --- | --- |
-| **LAN dev** | `http://192.168.31.177:3000` | `cleartext: true` | `npm run dev` on this machine, phone on the same Wi-Fi. Current setting. |
-| **Branch preview** | `https://<branch>-<project>.vercel.app` | none | Testing a web branch on a real device off the LAN |
-| **Production** | the production Vercel domain | none | What staff install |
+| **LAN dev** | `npm run env:lan` | `http://192.168.31.177:3000` | `cleartext: true`, `allowMixedContent: true` |
+| **Branch preview** | `npm run env:preview` | the `feat/mobile-geolocation` preview. Current setting. | none |
+| **Production** | `npm run env:prod` | `https://peckers-cashflow-peckerschicken.vercel.app` | none |
+
+A rebuild is still required after switching.
 
 `cleartext: true` exists **only** for LAN dev, because a dev server is plain
 HTTP and Android blocks cleartext by default. **It must be off in the release
@@ -176,8 +190,11 @@ So when testing on a device:
    first commit. Android requires every update to be signed by the **same** key
    as the installed version. Lose the keystore and **no phone that has the app
    can ever receive an update** — every staff device needs a manual uninstall
-   and reinstall. Back it up, with its passwords, somewhere outside this repo
-   and outside this machine, before Task 4 generates it.
+   and reinstall. **It exists as of Update 9** —
+   `android/peckers-release.jks` with `android/keystore.properties` beside it,
+   both gitignored, and the password written nowhere else. Back BOTH up outside
+   this repo and outside this machine; `RELEASE.md` section 1 has the detail
+   and the certificate fingerprints to check a build against.
 
 2. **NO `.github/workflows` in this repo. Ever.**
    The web repo runs cron jobs against the production database — the nightly
@@ -232,19 +249,23 @@ feature staff rely on to show up for a shift.
    in. If it is user-visible, it is not this repo.
 3. Check which `server.url` is active; a device symptom is very often just the
    wrong environment or a stale LAN IP.
-4. After editing `capacitor.config.json` or anything under `android/`, run
+4. Switch environments with `npm run env:lan|preview|prod`, which syncs for
+   you. After editing a `config/*.json` or anything under `android/`, run
    `npx cap sync android`.
 5. Log the change in `mobile-updates.md`. **Do not wait to be reminded** — it is
    automatic and mandatory.
 
 ---
 
-## Toolchain prerequisites (not yet installed as of Update 1)
+## Toolchain
 
-Scaffolding this repo needs only Node. **Building an APK additionally needs:**
+Both prerequisites are installed as of Update 2:
 
-- **JDK 21** — this machine has only JDK 8 (`C:\Program Files\Java\jdk1.8.0_172`),
-  which Capacitor's Gradle plugin rejects.
-- **Android SDK** + platform tools (`adb`), normally via Android Studio.
+- **JDK 21** at
+  `C:\Users\landa\AppData\Local\Programs\Eclipse Adoptium\jdk-21.0.12.1+1`.
+  Set `JAVA_HOME` to it per shell — JDK 8 is also on this machine
+  (`C:\Program Files\Java\jdk1.8.0_172`) and Capacitor's Gradle plugin rejects it.
+- **Android SDK** at `C:\Users\landa\AppData\Local\Android\Sdk`, with
+  `build-tools/36.0.0` (`apksigner`, `aapt2`) and `platform-tools` (`adb`).
 
-Install both before attempting `gradlew assembleDebug` or `npx cap run android`.
+Building and distributing a signed release is documented in `RELEASE.md`.

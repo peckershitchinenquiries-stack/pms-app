@@ -1,5 +1,14 @@
 apply plugin: 'com.android.application'
 
+// Release signing. keystore.properties and the .jks it names are gitignored:
+// Android requires every update to be signed by the SAME key, so losing either
+// strands every phone that has the app. See RELEASE.md.
+def keystorePropsFile = rootProject.file("keystore.properties")
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+
 android {
     namespace = "uk.co.peckers.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +16,8 @@ android {
         applicationId "uk.co.peckers.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +25,26 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keystorePropsFile.exists()) {
+                storeFile rootProject.file(keystoreProps["storeFile"])
+                storePassword keystoreProps["storePassword"]
+                keyAlias keystoreProps["keyAlias"]
+                keyPassword keystoreProps["keyPassword"]
+                // v3 as well as v2: v3 is what allows this key to be ROTATED
+                // later without every phone reinstalling.
+                enableV2Signing true
+                enableV3Signing true
+            }
+        }
+    }
     buildTypes {
         release {
+            signingConfig signingConfigs.release
+            // R8 is left off: Capacitor loads plugins reflectively from
+            // capacitor.plugins.json, so shrinking needs keep rules per plugin
+            // and buys little here - the APK is dominated by the Firebase SDK.
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -51,4 +78,15 @@ try {
     }
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
+
+// An unsigned release APK installs nowhere and cannot be told apart from a
+// signed one by filename alone. Fail at configuration time instead.
+gradle.taskGraph.whenReady { graph ->
+    def wantsRelease = graph.allTasks.any { it.name.toLowerCase().contains("release") }
+    if (wantsRelease && !keystorePropsFile.exists()) {
+        throw new GradleException(
+            "android/keystore.properties is missing - cannot sign a release build. See RELEASE.md."
+        )
+    }
 }

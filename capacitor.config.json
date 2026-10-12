@@ -3,11 +3,12 @@
   "appName": "Peckers",
   "webDir": "www",
   "android": {
-    "allowMixedContent": true,
+    "allowMixedContent": false,
     "appendUserAgent": "PeckersApp/1"
   },
   "server": {
     "androidScheme": "https",
+    "allowNavigation": [],
     "url": "https://peckers-cashflow-git-feat-mobile-geolocation-peckerschicken.vercel.app"
   }
 }

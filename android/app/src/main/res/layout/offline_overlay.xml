@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Native offline screen, laid over the WebView. It is native rather than a
+     bundled HTML page because a WebView with no network cannot be trusted to
+     render anything, and because the retry has to reload server.url itself -
+     a page served from the local asset host would reload itself instead. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/offline_overlay"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/offlineBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:fitsSystemWindows="true"
+    android:visibility="gone">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp">
+
+        <TextView
+            android:id="@+id/offline_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/offline_title"
+            android:textColor="@color/offlineText"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/offline_body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:maxWidth="320dp"
+            android:gravity="center"
+            android:lineSpacingMultiplier="1.35"
+            android:text="@string/offline_body"
+            android:textColor="@color/offlineMutedText"
+            android:textSize="15sp" />
+
+        <Button
+            android:id="@+id/offline_retry"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:background="@drawable/offline_button"
+            android:paddingStart="28dp"
+            android:paddingEnd="28dp"
+            android:text="@string/offline_retry"
+            android:textAllCaps="false"
+            android:textColor="@color/offlineButtonText"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+</FrameLayout>

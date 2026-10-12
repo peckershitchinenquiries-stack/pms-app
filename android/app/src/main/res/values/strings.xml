@@ -4,4 +4,14 @@
     <string name="title_activity_main">Peckers</string>
     <string name="package_name">uk.co.peckers.app</string>
     <string name="custom_url_scheme">uk.co.peckers.app</string>
+
+    <string name="offline_title">No connection</string>
+    <string name="offline_body">Peckers needs an internet connection to load. Check your Wi‑Fi or mobile data, then try again.</string>
+    <string name="offline_body_still">Still no connection. Check your Wi‑Fi or mobile data.</string>
+    <string name="offline_retry">Try again</string>
+
+    <string name="exit_title">Close Peckers?</string>
+    <string name="exit_message">You will stay signed in.</string>
+    <string name="exit_confirm">Close</string>
+    <string name="exit_cancel">Stay</string>
 </resources>

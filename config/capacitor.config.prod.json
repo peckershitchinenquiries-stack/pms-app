@@ -1,0 +1,14 @@
+{
+  "appId": "uk.co.peckers.app",
+  "appName": "Peckers",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false,
+    "appendUserAgent": "PeckersApp/1"
+  },
+  "server": {
+    "androidScheme": "https",
+    "allowNavigation": [],
+    "url": "https://peckers-cashflow-peckerschicken.vercel.app"
+  }
+}

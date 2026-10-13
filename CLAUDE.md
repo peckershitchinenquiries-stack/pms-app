@@ -7,7 +7,7 @@ do not need to be restated.
 
 ## What this folder is
 
-`pms-mobile` is a **Capacitor native shell for Android and nothing else.**
+`pms-mobile` is a **Capacitor native shell for Android and iOS, and nothing else.**
 
 It contains **zero business logic**: no React components, no server actions, no
 Supabase client, no SQL, no migrations, no pay or clock calculations. It is a
@@ -70,6 +70,8 @@ Lives **here**, in `pms-mobile`:
 - `android/app/src/main/res/**` — launcher icons, splash drawables
 - `www/index.html` — the offline fallback page (never business UI)
 - `assets/` — the 1024×1024 icon/splash source images
+- `ios/**` — the generated Xcode project, `Info.plist`, the SPM package
+- `codemagic.yaml` — the cloud macOS build definition (we own no Mac)
 - `mobile-updates.md` — this repo's changelog
 
 Must go in **`peckers-cashflow`**, never here:
@@ -110,6 +112,18 @@ device testing, and Task 9 rollout.** Task 9 additionally waits on
 with `npm run env:prod` gives staff no reminders at all. Update this table
 whenever a task completes.
 
+### The iOS track
+
+Opened at Update 11, and numbered **separately again** — by the plan used in
+conversation, where **step 7 is "cloud build setup for iPhone without a Mac"**,
+step 8 is registering staff iPhones and making the install link, and step 9 is
+iPhone testing and rollout. Steps 1–6 of that plan are the Android work above.
+
+Step 7 is **half done**: the Xcode project exists and `codemagic.yaml` builds it
+unsigned for the simulator on a cloud Mac. Everything past that — a real `.ipa`,
+TestFlight, push on iOS — needs the $99/yr Apple Developer account, deliberately
+not bought until the app is proven to build.
+
 > **Two numberings are in play.** This table is the one every
 > `mobile-updates.md` entry refers to — "Task 4" in the log always means
 > keystore and signing. The working plan used in conversation numbers the
@@ -122,10 +136,10 @@ whenever a task completes.
 
 | Setting | Value | Why it is fixed |
 | --- | --- | --- |
-| `appId` | `uk.co.peckers.app` | **PERMANENT.** Android identifies an installed app by its package name. Change it and every staff phone must uninstall and reinstall — losing the signed-in session — and the old app can never be updated again. Not negotiable once one device has it. |
+| `appId` | `uk.co.peckers.app` | **PERMANENT.** Android identifies an installed app by its package name. Change it and every staff phone must uninstall and reinstall — losing the signed-in session — and the old app can never be updated again. Not negotiable once one device has it. The same string is also the **iOS bundle identifier** and must be registered verbatim in App Store Connect. |
 | `appName` | `Peckers` | Shown under the launcher icon |
 | Theme colour | `#0f0f0f` | Matches `viewport.themeColor` in the web app's `app/layout.tsx` and `theme_color` in `public/manifest.webmanifest`. Any other value shows as a visible seam between the native chrome and the page. |
-| Orientation | **Portrait only** | Locked in `AndroidManifest.xml`. The web app's mobile layouts are built for portrait; the manifest already declares `"orientation": "portrait"`. |
+| Orientation | **Portrait only** | Locked in `AndroidManifest.xml` and in `UISupportedInterfaceOrientations` in `ios/App/App/Info.plist`. The web app's mobile layouts are built for portrait; the manifest already declares `"orientation": "portrait"`. |
 | `webDir` | `www` | Must exist or `cap sync` fails, even though remote mode ignores its contents |
 
 ---
@@ -201,9 +215,10 @@ So when testing on a device:
    auto clock-out sweep (`app/api/cron/auto-clock-out`) and shift reminders
    (`app/api/cron/shift-reminders`). A workflow here pointed at the same
    endpoints would **double-fire against the same data**: duplicate reminders to
-   staff, and a sweep racing itself over open clock rows. CI for this repo, if
-   it is ever wanted, is a build-only job that touches no endpoint — and it is
-   not wanted yet.
+   staff, and a sweep racing itself over open clock rows. CI for this repo is a build-only job that touches no endpoint.
+
+   `codemagic.yaml` (Update 11) is exactly that, and it is **not** a GitHub
+   workflow — it runs on Codemagic, compiles the iOS project and calls nothing.
 
 3. **Every change is logged in `mobile-updates.md`**, immediately, using the
    template in that file. This repo has its **own numbering starting at

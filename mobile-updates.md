@@ -1209,3 +1209,89 @@ afterwards without rebuilding.
 2. Carried from Update 9: Updates 6–10 are all still uncommitted, this repo has
    no remote, and the keystore + `keystore.properties` still need backing up
    off this machine.
+
+---
+
+### Update 11: iOS track opened — Xcode project scaffolded and a cloud macOS build defined
+
+**Date:** 2026-10-13
+**Type:** Build
+**Scope:** iOS native project, CI definition, docs. No Android file changed.
+**Files Modified:**
+- `package.json`, `package-lock.json` — added `@capacitor/ios@^8.5.2`
+- `ios/**` *(new — generated Xcode project)*
+- `ios/App/App/Info.plist`
+- `codemagic.yaml` *(new)*
+- `ios/App/App/Assets.xcassets/**` — Peckers icon and splash generated for iOS
+- `.gitignore`
+- `CLAUDE.md`
+- `mobile-updates.md`
+
+**Summary:**
+Step 7 of the iOS plan: get an iPhone build running on a Mac we do not own.
+`npx cap add ios` scaffolds the Xcode project on Windows — Capacitor only gates
+the Xcode and CocoaPods checks behind macOS, not the scaffold itself — and
+`codemagic.yaml` compiles it on a cloud Mac mini M2. The build is **unsigned and
+simulator-only**, which is what lets the whole pipeline be proven before the
+$99/yr Apple Developer account is bought.
+
+**Changes:**
+1. Installed `@capacitor/ios@^8.5.2` and ran `npx cap add ios`. Capacitor 8 uses
+   **Swift Package Manager, not CocoaPods** — there is no `Podfile` and no
+   `.xcworkspace`, only `App.xcodeproj` plus `ios/App/CapApp-SPM`. The
+   `@capacitor/push-notifications` plugin was picked up into `Package.swift`
+   automatically.
+2. Added `NSLocationWhenInUseUsageDescription` to `Info.plist`.
+3. Locked iOS to portrait by removing the landscape entries from
+   `UISupportedInterfaceOrientations` (and the landscape pair from the `~ipad`
+   array), matching the orientation convention already fixed for Android.
+4. Added `codemagic.yaml` with one workflow, `ios-simulator`: `npm ci` →
+   `npx cap sync ios` → `xcodebuild … -sdk iphonesimulator -configuration Debug
+   CODE_SIGNING_ALLOWED=NO` → zip the `.app` as an artifact.
+5. Built with `-target App`, **not** `-scheme App`: the Capacitor 8 template
+   ships no shared `.xcscheme`, so a scheme-based invocation would fail on a CI
+   machine that has never opened the project in Xcode.
+6. Left out any `triggering:` block, so builds are manual only.
+7. Extended `.gitignore` for iOS signing material (`*.p12`, `*.cer`,
+   `*.mobileprovision`, `GoogleService-Info.plist`) and build output.
+8. Ran `capacitor-assets generate --ios` so the app carries the Peckers icon
+   and splash rather than Capacitor's default, and deleted the three unused
+   `splash-2732x2732*.png` template files the generator left unreferenced.
+9. Added `npm run sync:ios` and `npm run assets:ios` beside their Android twins,
+   and widened the package description to "Android + iOS".
+10. Updated `CLAUDE.md`: the repo is no longer Android-only, `ios/**` and
+   `codemagic.yaml` are declared as living here, the portrait and `appId`
+   conventions now name their iOS equivalents, hard rule 2 states that
+   `codemagic.yaml` is not a GitHub workflow, and an "iOS track" section records
+   that this plan numbers its steps separately from the table above.
+
+**Rationale:**
+An iOS build is the one piece of this project that cannot be done on the
+development machine at all. Proving the project compiles on a cloud Mac **before**
+spending $99 separates "does it build" from "can we distribute it", so the Apple
+subscription is bought against a known-good project rather than on faith. The
+portrait lock and the location string are not cosmetic: the iOS layouts are the
+same portrait-only mobile layouts, and a WKWebView that asks for a position with
+no usage description in `Info.plist` **crashes the app outright** — which would
+take out the geofenced clock-in, the single thing staff use the app for.
+
+**Testing:**
+- `npx cap add ios`: ✓ project generated, 1 plugin resolved into `Package.swift`
+- `Info.plist`: ✓ re-read after editing; location key present, orientation arrays
+  portrait-only
+- `codemagic.yaml`: ✓ parses as valid YAML (one workflow, five scripts)
+- **NOT tested: the build itself.** It has never been compiled — there is no Mac
+  here and the Codemagic build has not been run yet. `xcodebuild` arguments,
+  SPM resolution on CI and the artifact path are all unverified until the first
+  cloud build goes green.
+
+**Impact:**
+- **Users:** none. No staff device runs iOS yet and no Android behaviour changed.
+- **Web app:** nothing in `C:\NextJs\peckers-cashflow` was touched.
+- **Build/Release:** Android builds are unaffected — `npm run build:release` and
+  the keystore path are untouched. Note that `scripts/use-env.mjs` still runs
+  `cap sync android` only, so switching environments does not sync the iOS
+  project; CI does its own `cap sync ios`, so this bites only a future local Mac
+  build. The LAN environment would additionally need an ATS exception on iOS,
+  since `http://` is blocked by default — not needed for preview or production,
+  which are both HTTPS.

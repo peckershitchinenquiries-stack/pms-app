@@ -1,0 +1,48 @@
+# Cloud iOS builds on a macOS machine we do not own (Task 7 of the mobile plan).
+# NOT a GitHub workflow: this runs on Codemagic, builds only, and calls no
+# endpoint — so it cannot double-fire the web repo's crons (CLAUDE.md rule 2).
+#
+# No `triggering:` block on purpose. Builds are started by hand from the
+# Codemagic UI; an automatic build per push would spend the 500 free macOS
+# minutes a month on commits that change nothing native.
+
+workflows:
+  ios-simulator:
+    name: iOS simulator build (unsigned)
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment:
+      node: 20
+      xcode: latest
+    scripts:
+      - name: Install JS dependencies
+        script: npm ci
+
+      - name: Sync the Capacitor config into the iOS project
+        script: npx cap sync ios
+
+      - name: Show what the project contains
+        script: xcodebuild -project ios/App/App.xcodeproj -list
+
+      # -target, not -scheme: the Capacitor 8 template ships no shared scheme.
+      # Signing is off because an unsigned simulator build needs no Apple
+      # account — this proves the project compiles before we pay for one.
+      - name: Build for the simulator
+        script: |
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -target App \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -derivedDataPath ios/App/build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      # A .app is a directory, which Codemagic cannot upload as an artifact.
+      - name: Zip the simulator app
+        script: |
+          cd ios/App/build/Build/Products/Debug-iphonesimulator
+          zip -r Peckers-simulator.zip App.app
+    artifacts:
+      - ios/App/build/Build/Products/Debug-iphonesimulator/Peckers-simulator.zip
+      - /tmp/xcodebuild_logs/*.log

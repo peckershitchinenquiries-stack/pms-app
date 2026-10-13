@@ -29,3 +29,16 @@ android/app/src/main/assets/public/
 *.iml
 .DS_Store
 Thumbs.db
+
+# iOS signing material — same rule as the Android keystore: never committed.
+# Certificates and profiles are issued per Apple account and are re-downloadable,
+# but a committed .p12 hands anyone the ability to sign as us.
+*.p12
+*.cer
+*.certSigningRequest
+*.mobileprovision
+ios/App/App/GoogleService-Info.plist
+
+# iOS build output (ios/.gitignore covers App/build, App/Pods, DerivedData)
+*.ipa
+*.xcarchive

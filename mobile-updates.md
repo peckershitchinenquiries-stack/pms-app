@@ -1295,3 +1295,38 @@ take out the geofenced clock-in, the single thing staff use the app for.
   build. The LAN environment would additionally need an ATS exception on iOS,
   since `http://` is blocked by default — not needed for preview or production,
   which are both HTTPS.
+
+---
+
+### Update 12: Codemagic pinned to Node 22.19.0 — the Capacitor CLI refuses Node 20
+
+**Date:** 2026-10-13
+**Type:** Bug Fix
+**Scope:** CI definition only
+**Files Modified:**
+- `codemagic.yaml`
+
+**Summary:**
+The first cloud build (`6acdc266546ce6236cee0826`) failed at the `cap sync ios`
+step with `[fatal] The Capacitor CLI requires NodeJS >=22.0.0`. Update 11 pinned
+`node: 20`. Pinned to `22.19.0`, the exact version the development machine runs.
+
+**Changes:**
+1. `environment.node`: `20` → `22.19.0`.
+
+**Rationale:**
+`@capacitor/cli@8` declares `engines.node: ">=22.0.0"` and enforces it at
+runtime rather than warning. An exact pin instead of `22` keeps CI on the same
+version as local, so a Capacitor behaviour difference can never be a silent
+Node version difference.
+
+**Testing:**
+- YAML re-parsed: ✓ valid
+- The build itself is still unverified past this step. Steps 1–3 of the workflow
+  (`npm ci`, machine prep, source fetch) did pass on the failed run, so only the
+  Capacitor and `xcodebuild` steps remain unproven.
+
+**Impact:**
+- **Users:** none.
+- **Web app:** untouched.
+- **Build/Release:** Android is unaffected; this file governs iOS CI only.

@@ -1381,3 +1381,57 @@ artifact path stays predictable.
 **Follow-up for the signing work:** `xcodebuild archive` *does* require
 `-scheme`, so a shared `App.xcscheme` will have to be committed before a real
 `.ipa` can be produced. Deferred until the Apple Developer account exists.
+
+---
+
+### Update 14: iOS step 7 complete — the cloud build is green and the artifact verified
+
+**Date:** 2026-10-13
+**Type:** Documentation
+**Scope:** Docs only — records the first successful iOS build. No build file changed.
+**Files Modified:**
+- `CLAUDE.md`
+- `mobile-updates.md`
+
+**Summary:**
+The fourth cloud build, on commit `7541948`, compiled the iOS project and
+published `Peckers-simulator.zip`. Step 7 of the iOS plan — a cloud build for
+iPhone on a machine we do not own — is done, with no Apple Developer account
+spent on proving it.
+
+**Changes:**
+1. `CLAUDE.md` iOS track updated from "half done" to done, with the follow-up
+   that `xcodebuild archive` requires a shared scheme the template lacks.
+
+**Rationale:**
+The whole point of ordering it this way was to reach a known-good project before
+spending $99/yr. That is now the case, so the account is bought against evidence
+rather than hope.
+
+**Testing — the downloaded artifact was unpacked and inspected:**
+- `CFBundleIdentifier`: ✓ `uk.co.peckers.app`, identical to the Android package
+- `CFBundleDisplayName`: ✓ `Peckers`
+- `NSLocationWhenInUseUsageDescription`: ✓ present — the string whose absence
+  crashes a WKWebView geolocation request, and with it the clock-in
+- `UISupportedInterfaceOrientations`: ✓ `[Portrait]` only
+- `capacitor.config.json` inside the bundle: ✓ `server.url` is the production
+  Vercel deployment, `PushNotificationsPlugin` in `packageClassList`
+- `MinimumOSVersion` 15.0; `DTSDKName` `iphonesimulator26.5`
+- **Not tested, and not testable yet:** the app has never been RUN. A simulator
+  build executes only on an iOS Simulator under macOS — not on Windows and not
+  on an iPhone. Nothing about the WebView loading, the session, the geofence or
+  push on iOS is verified by this; only that the project compiles and is
+  configured as intended.
+
+**Build history for the record:**
+| Build | Commit | Outcome |
+| --- | --- | --- |
+| 1 | `12f5a60` | failed — Capacitor CLI requires Node >= 22 (Update 12) |
+| 2 | `a222ba8` | failed — `-derivedDataPath` needs `-scheme` (Update 13) |
+| 3 | `7541948` | ✅ green, `Peckers-simulator.zip` published |
+
+**Impact:**
+- **Users:** none. No iOS device runs this yet.
+- **Web app:** untouched throughout the iOS track so far.
+- **Build/Release:** iOS builds are now reproducible from a push plus one click.
+  Android is unaffected.

@@ -119,10 +119,15 @@ conversation, where **step 7 is "cloud build setup for iPhone without a Mac"**,
 step 8 is registering staff iPhones and making the install link, and step 9 is
 iPhone testing and rollout. Steps 1–6 of that plan are the Android work above.
 
-Step 7 is **half done**: the Xcode project exists and `codemagic.yaml` builds it
-unsigned for the simulator on a cloud Mac. Everything past that — a real `.ipa`,
-TestFlight, push on iOS — needs the $99/yr Apple Developer account, deliberately
-not bought until the app is proven to build.
+Step 7 is **done** (Update 14): `codemagic.yaml` builds the project unsigned for
+the simulator on a cloud Mac mini M2, and the artifact was verified to carry the
+right bundle id, portrait lock, location usage string and push plugin.
+Everything past that — a real `.ipa`, TestFlight, push on iOS — needs the $99/yr
+Apple Developer account, which is now justified by a project proven to compile.
+
+`xcodebuild archive` requires `-scheme`, so a shared `App.xcscheme` must be
+committed before an `.ipa` can be produced. The simulator build sidesteps it with
+`-target`; the signing work cannot.
 
 > **Two numberings are in play.** This table is the one every
 > `mobile-updates.md` entry refers to — "Task 4" in the log always means

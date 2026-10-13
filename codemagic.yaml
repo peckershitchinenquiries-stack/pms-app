@@ -27,6 +27,8 @@ workflows:
         script: xcodebuild -project ios/App/App.xcodeproj -list
 
       # -target, not -scheme: the Capacitor 8 template ships no shared scheme.
+      # That also rules out -derivedDataPath, which xcodebuild accepts only
+      # alongside -scheme, so the output location is set with SYMROOT.
       # Signing is off because an unsigned simulator build needs no Apple
       # account — this proves the project compiles before we pay for one.
       - name: Build for the simulator
@@ -36,15 +38,16 @@ workflows:
             -target App \
             -sdk iphonesimulator \
             -configuration Debug \
-            -derivedDataPath ios/App/build \
             CODE_SIGNING_ALLOWED=NO \
+            SYMROOT="$PWD/build-ios" \
             build
 
       # A .app is a directory, which Codemagic cannot upload as an artifact.
       - name: Zip the simulator app
         script: |
-          cd ios/App/build/Build/Products/Debug-iphonesimulator
+          cd build-ios/Debug-iphonesimulator
+          ls -la
           zip -r Peckers-simulator.zip App.app
     artifacts:
-      - ios/App/build/Build/Products/Debug-iphonesimulator/Peckers-simulator.zip
+      - build-ios/Debug-iphonesimulator/Peckers-simulator.zip
       - /tmp/xcodebuild_logs/*.log

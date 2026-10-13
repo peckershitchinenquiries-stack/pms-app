@@ -1330,3 +1330,54 @@ Node version difference.
 - **Users:** none.
 - **Web app:** untouched.
 - **Build/Release:** Android is unaffected; this file governs iOS CI only.
+
+---
+
+### Update 13: iOS build output moved from `-derivedDataPath` to `SYMROOT`
+
+**Date:** 2026-10-13
+**Type:** Bug Fix
+**Scope:** CI definition only
+**Files Modified:**
+- `codemagic.yaml`
+- `.gitignore`
+
+**Summary:**
+Build 2 (`6acddec2546ce6236cee0e46`) got past Node and Capacitor and failed in
+`xcodebuild` with `The flag -scheme, -testProductsPath, or -xctestrun is
+required when specifying -derivedDataPath`. The two flags Update 11 combined are
+mutually exclusive: `-derivedDataPath` is only accepted alongside `-scheme`, and
+this build uses `-target` because the Capacitor 8 template ships no shared
+scheme. Output location now set with `SYMROOT`, which `-target` does accept.
+
+**Changes:**
+1. Dropped `-derivedDataPath ios/App/build`; added `SYMROOT="$PWD/build-ios"`.
+2. Product path therefore moved from
+   `ios/App/build/Build/Products/Debug-iphonesimulator/` to
+   `build-ios/Debug-iphonesimulator/` — `SYMROOT` has no `Build/Products/`
+   nesting, unlike a derived data directory. Zip step and `artifacts` updated.
+3. Added `ls -la` before the zip so a wrong product path names itself in the log
+   instead of failing as a bare "no such file".
+4. `build-ios/` added to `.gitignore`.
+
+**Rationale:**
+Keeping `-target` is the deliberate choice — a scheme-based build would depend
+on Xcode having autocreated a scheme on a machine that has never opened the
+project. `SYMROOT` is the scheme-free way to pin the output directory, so the
+artifact path stays predictable.
+
+**Testing:**
+- YAML re-parsed: ✓ valid
+- Build 2 confirmed that `npm ci`, `npx cap sync ios` and `xcodebuild -list` all
+  pass on CI — so the project resolves and SPM is not an obstacle.
+- **Still unverified: the compile itself.** Build 2 failed on argument parsing,
+  before xcodebuild compiled a single file.
+
+**Impact:**
+- **Users:** none.
+- **Web app:** untouched.
+- **Build/Release:** iOS CI only; Android unaffected.
+
+**Follow-up for the signing work:** `xcodebuild archive` *does* require
+`-scheme`, so a shared `App.xcscheme` will have to be committed before a real
+`.ipa` can be produced. Deferred until the Apple Developer account exists.

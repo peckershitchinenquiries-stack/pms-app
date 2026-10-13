@@ -42,3 +42,6 @@ ios/App/App/GoogleService-Info.plist
 # iOS build output (ios/.gitignore covers App/build, App/Pods, DerivedData)
 *.ipa
 *.xcarchive
+
+# CI build output (Codemagic SYMROOT)
+build-ios/

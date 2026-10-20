@@ -1435,3 +1435,47 @@ rather than hope.
 - **Web app:** untouched throughout the iOS track so far.
 - **Build/Release:** iOS builds are now reproducible from a push plus one click.
   Android is unaffected.
+
+---
+
+### Update 15: Production release 1.0.1 (versionCode 3), replacing the mobile-ui preview APK
+
+**Date:** 2026-10-19
+**Type:** Release
+**Scope:** Android release build. No shell behaviour changed.
+**Files Modified:**
+- `android/app/build.gradle`
+- `mobile-updates.md`
+
+**Summary:**
+The APK on the owner's phone was `peckers-release-1.0.0-mobile-ui-preview.apk`
+(16 Oct), whose baked-in `server.url` was the `feat/mobile-native-ui` Vercel
+preview. That branch is now merged into the web repo's `main`, so a production
+build was cut to point the installed app at the live site, where the new
+Loyalty Customers dashboard is.
+
+**Changes:**
+1. `versionCode` 2 → 3 and `versionName` "1.0.0" → "1.0.1", so it installs as
+   an update over the versionCode 2 preview build.
+2. `npm run env:prod` → `server.url` `https://peckers-cashflow-pearl.vercel.app`
+   synced into `android/app/src/main/assets`.
+3. `gradlew assembleRelease`, staged as
+   `C:\NextJs\pms-apk\peckers-release-1.0.1-production.apk`.
+
+**Rationale:**
+`server.url` is fixed at build time, so merging the web branch could never move
+an APK built against its preview. Once on production, web changes reach the app
+on every push to `main` with no rebuild.
+
+**Testing:**
+- `gradlew assembleRelease`: ✓ BUILD SUCCESSFUL in 52s
+- `assets/capacitor.config.json` in the APK: ✓ `server.url` is the production URL
+- `aapt2 dump badging`: ✓ `uk.co.peckers.app`, versionCode 3, versionName 1.0.1
+- `apksigner verify`: ✓ same signing certificate (SHA-256 `62f396e5…dd54`) as the
+  installed 1.0.0 mobile-ui-preview build, so it updates in place
+- **Not tested here:** installing on the phone and loading the dashboard.
+
+**Impact:**
+- **Users:** the app loads production; the Vercel toolbar disappears.
+- **Web app:** untouched.
+- **Build/Release:** the next build that leaves this machine needs versionCode 4.

@@ -6,31 +6,73 @@
 # Codemagic UI; an automatic build per push would spend the 500 free macOS
 # minutes a month on commits that change nothing native.
 
+definitions:
+  environment: &base_environment
+    # Capacitor 8 CLI refuses to run below 22; this pins the same version the
+    # development machine uses rather than a floating major.
+    node: 22.19.0
+    xcode: latest
+    # Holds GOOGLE_SERVICE_INFO_PLIST (base64 of the Firebase iOS config).
+    # The group must exist in the Codemagic UI or the build will not start.
+    groups:
+      - firebase
+
+  scripts:
+    - &install
+      name: Install JS dependencies
+      script: npm ci
+
+    # Gitignored like google-services.json, so CI writes it from a secret.
+    # Without it the app still builds and runs, with push unavailable.
+    - &firebase_config
+      name: Write the Firebase iOS config
+      script: |
+        if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
+          echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > ios/App/App/GoogleService-Info.plist
+          plutil -lint ios/App/App/GoogleService-Info.plist
+        else
+          echo "GOOGLE_SERVICE_INFO_PLIST not set - building without native push"
+        fi
+
+    - &cap_sync
+      name: Sync the Capacitor config into the iOS project
+      script: npx cap sync ios
+
+    # Codemagic's BUILD_NUMBER rises with every run of a workflow, so each
+    # upload is newer than the last — App Store Connect refuses a repeat.
+    - &build_number
+      name: Set the build number
+      script: /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" ios/App/App/Info.plist
+
+    - &signing
+      name: Apply the signing profiles
+      script: xcode-project use-profiles
+
+    # Needs the shared scheme in xcshareddata/xcschemes (Update 17).
+    - &build_ipa
+      name: Build the signed .ipa
+      script: xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
+
+  signed_artifacts: &signed_artifacts
+    - build/ios/ipa/*.ipa
+    - /tmp/xcodebuild_logs/*.log
+
 workflows:
   ios-simulator:
     name: iOS simulator build (unsigned)
     instance_type: mac_mini_m2
     max_build_duration: 30
-    environment:
-      # Capacitor 8 CLI refuses to run below 22; this pins the same version the
-      # development machine uses rather than a floating major.
-      node: 22.19.0
-      xcode: latest
+    environment: *base_environment
     scripts:
-      - name: Install JS dependencies
-        script: npm ci
-
-      - name: Sync the Capacitor config into the iOS project
-        script: npx cap sync ios
+      - *install
+      - *firebase_config
+      - *cap_sync
 
       - name: Show what the project contains
         script: xcodebuild -project ios/App/App.xcodeproj -list
 
-      # -target, not -scheme: the Capacitor 8 template ships no shared scheme.
-      # That also rules out -derivedDataPath, which xcodebuild accepts only
-      # alongside -scheme, so the output location is set with SYMROOT.
-      # Signing is off because an unsigned simulator build needs no Apple
-      # account — this proves the project compiles before we pay for one.
+      # -target with SYMROOT pins the output directory without depending on a
+      # scheme. Signing is off because a simulator build needs no Apple account.
       - name: Build for the simulator
         script: |
           xcodebuild \
@@ -51,3 +93,53 @@ workflows:
     artifacts:
       - build-ios/Debug-iphonesimulator/Peckers-simulator.zip
       - /tmp/xcodebuild_logs/*.log
+
+  # Needs the Apple Developer account. One-time Codemagic setup: an App Store
+  # Connect API key integration named "Peckers ASC", the distribution
+  # certificate and App Store profile under Code signing identities, and the app
+  # record for uk.co.peckers.app created in App Store Connect.
+  ios-testflight:
+    name: iOS signed build to TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    integrations:
+      app_store_connect: Peckers ASC
+    environment:
+      <<: *base_environment
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: uk.co.peckers.app
+    scripts:
+      - *install
+      - *firebase_config
+      - *cap_sync
+      - *build_number
+      - *signing
+      - *build_ipa
+    artifacts: *signed_artifacts
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+
+  # The alternative route: every iPhone's UDID registered in the Developer
+  # portal and included in the ad hoc profile, installed from the .ipa link.
+  ios-adhoc:
+    name: iOS signed ad hoc build
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    integrations:
+      app_store_connect: Peckers ASC
+    environment:
+      <<: *base_environment
+      ios_signing:
+        distribution_type: ad_hoc
+        bundle_identifier: uk.co.peckers.app
+    scripts:
+      - *install
+      - *firebase_config
+      - *cap_sync
+      - *build_number
+      - *signing
+      - *build_ipa
+    artifacts: *signed_artifacts

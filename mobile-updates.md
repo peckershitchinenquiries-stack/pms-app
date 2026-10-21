@@ -1616,3 +1616,56 @@ exercise rather than a debugging one.
   distribution certificate and the App Store / ad hoc profile under Code signing identities,
   and the app record for `uk.co.peckers.app` in App Store Connect (TestFlight route).
 - **Android:** unaffected — no Android file changed.
+
+---
+
+### Update 18: Firebase moved to the Peckers account; release 1.0.2 (versionCode 4)
+
+**Date:** 2026-10-21
+**Type:** Release
+**Scope:** Android release build. Firebase project replaced. No shell code changed.
+Branch `feat/ios-app`.
+**Files Modified:**
+- `android/app/build.gradle`
+- `android/app/google-services.json` (gitignored — replaced by the owner, not committed)
+- `mobile-updates.md`
+
+**Summary:**
+The Firebase project behind push (`pms-pp`) had been created under a personal Google
+account. Since no staff had the app yet, it was replaced with a new project owned by the
+Peckers account, **`pms-app-8e58b`** (sender ID `1017846986384`), with the Android app and the
+iOS app `uk.co.peckers.app` both registered in it. This build is the first to carry it.
+
+**Changes:**
+1. Owner replaced `android/app/google-services.json` with the new project's file.
+2. Owner replaced `FIREBASE_SERVICE_ACCOUNT` in Vercel (Production and Preview) with the
+   new project's service-account key, base64-encoded, and redeployed production.
+3. `versionCode` 3 → 4, `versionName` "1.0.1" → "1.0.2".
+4. `npm run env:prod` → `server.url` `https://peckers-cashflow-pearl.vercel.app`, synced.
+5. `gradlew assembleRelease`, staged as `C:\NextJs\pms-apk\pms-android-v1.0.2.apk`
+   (SHA-256 `8d4d94de…8b70`).
+
+**Rationale:**
+The business, not one person's mailbox, has to own the credential that every shift
+reminder depends on. Replacing it before any staff install meant no device token had to be
+migrated.
+
+**Testing:**
+- Pre-build health check of the deployment this APK loads: `next build` ✓ (58 pages);
+  `https://peckers-cashflow-pearl.vercel.app` and `…-peckerschicken.vercel.app` serve the same
+  build; `/`, all four portal logins, `/manifest.webmanifest` and `/sw.js` ✓ 200.
+- `gradlew assembleRelease`: ✓ BUILD SUCCESSFUL, `processReleaseGoogleServices` ran.
+- `aapt2 dump badging`: ✓ `uk.co.peckers.app`, versionCode 4, versionName 1.0.2.
+- `aapt2 dump resources`: ✓ `project_id` `pms-app-8e58b`, `gcm_defaultSenderId` `1017846986384`.
+- `apksigner verify`: ✓ certificate SHA-256 `62f396e5…dd54`, same as every earlier release.
+- APK `assets/capacitor.config.json`: ✓ production `server.url`.
+- **NOT tested here:** install, sign-in, clock-in or a delivered reminder on a phone.
+
+**Impact:**
+- **Users:** none yet — the owner reinstalls on the test phone.
+- **Build/Release:** any phone token registered under `pms-pp` is now useless. FCM answers
+  it with `messaging/mismatched-credential`, which `lib/fcm.ts` does not treat as dead, so such
+  a row would never be pruned — clear old app rows from `push_subscriptions` /
+  `manager_push_subscriptions` if any remain. The next build that leaves this machine needs
+  versionCode 5. The old `pms-pp` project can be deleted once a reminder arrives through the
+  new one.

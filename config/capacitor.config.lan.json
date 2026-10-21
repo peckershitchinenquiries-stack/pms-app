@@ -6,6 +6,9 @@
     "allowMixedContent": true,
     "appendUserAgent": "PeckersApp/1"
   },
+  "ios": {
+    "appendUserAgent": "PeckersApp/1"
+  },
   "server": {
     "androidScheme": "https",
     "allowNavigation": [],

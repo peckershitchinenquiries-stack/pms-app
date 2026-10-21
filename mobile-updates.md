@@ -1435,3 +1435,237 @@ rather than hope.
 - **Web app:** untouched throughout the iOS track so far.
 - **Build/Release:** iOS builds are now reproducible from a push plus one click.
   Android is unaffected.
+
+---
+
+### Update 15: Production release 1.0.1 (versionCode 3), replacing the mobile-ui preview APK
+
+**Date:** 2026-10-19
+**Type:** Release
+**Scope:** Android release build. No shell behaviour changed.
+**Files Modified:**
+- `android/app/build.gradle`
+- `mobile-updates.md`
+
+**Summary:**
+The APK on the owner's phone was `peckers-release-1.0.0-mobile-ui-preview.apk`
+(16 Oct), whose baked-in `server.url` was the `feat/mobile-native-ui` Vercel
+preview. That branch is now merged into the web repo's `main`, so a production
+build was cut to point the installed app at the live site, where the new
+Loyalty Customers dashboard is.
+
+**Changes:**
+1. `versionCode` 2 → 3 and `versionName` "1.0.0" → "1.0.1", so it installs as
+   an update over the versionCode 2 preview build.
+2. `npm run env:prod` → `server.url` `https://peckers-cashflow-pearl.vercel.app`
+   synced into `android/app/src/main/assets`.
+3. `gradlew assembleRelease`, staged as
+   `C:\NextJs\pms-apk\peckers-release-1.0.1-production.apk`.
+
+**Rationale:**
+`server.url` is fixed at build time, so merging the web branch could never move
+an APK built against its preview. Once on production, web changes reach the app
+on every push to `main` with no rebuild.
+
+**Testing:**
+- `gradlew assembleRelease`: ✓ BUILD SUCCESSFUL in 52s
+- `assets/capacitor.config.json` in the APK: ✓ `server.url` is the production URL
+- `aapt2 dump badging`: ✓ `uk.co.peckers.app`, versionCode 3, versionName 1.0.1
+- `apksigner verify`: ✓ same signing certificate (SHA-256 `62f396e5…dd54`) as the
+  installed 1.0.0 mobile-ui-preview build, so it updates in place
+- **Not tested here:** installing on the phone and loading the dashboard.
+
+**Impact:**
+- **Users:** the app loads production; the Vercel toolbar disappears.
+- **Web app:** untouched.
+- **Build/Release:** the next build that leaves this machine needs versionCode 4.
+
+---
+
+### Update 16: iOS push wired to FCM, aps entitlement, and the PeckersApp marker on iOS
+
+**Date:** 2026-10-20
+**Type:** Feature
+**Scope:** iOS shell (push registration, entitlements, user agent) and the Codemagic build.
+Companion to the web repo's Update 266 (`apns` block in `lib/fcm.ts`, iOS-aware copy).
+**Files Modified:**
+- `ios/App/App/AppDelegate.swift`
+- `ios/App/App/App.entitlements` (new)
+- `ios/App/App/Info.plist`
+- `ios/App/App.xcodeproj/project.pbxproj`
+- `capacitor.config.json`, `config/capacitor.config.{lan,preview,prod}.json`
+- `codemagic.yaml`
+- `mobile-updates.md`
+
+**Summary:**
+Before this, push on iPhone could not work at all: the AppDelegate never forwarded the APNs
+token to Capacitor, so `register()` timed out after 15s, and even if it had, the token would
+have been a raw APNs token that the server's FCM sender rejects as invalid (and then prunes
+as dead). The shell now hands the APNs token to Firebase Messaging and gives the page an FCM
+token, the same kind Android produces, so the existing server path needs only an `apns` block.
+
+**Changes:**
+1. `AppDelegate.swift`: `FirebaseApp.configure()` at launch **only if**
+   `GoogleService-Info.plist` is in the bundle (configuring without it crashes).
+   `didRegisterForRemoteNotificationsWithDeviceToken` sets `Messaging.apnsToken`, fetches the
+   FCM token and posts it as `.capacitorDidRegisterForRemoteNotifications` (the plugin accepts
+   a String token). Failures — including "Firebase not configured in this build" — post
+   `.capacitorDidFailToRegisterForRemoteNotifications`, so the page gets a clear
+   `registrationError` instead of a 15s timeout. The empty template lifecycle stubs were removed.
+2. `Info.plist`: `FirebaseAppDelegateProxyEnabled = false`. The token is forwarded explicitly,
+   and swizzling would otherwise compete with Capacitor's notification delegate.
+3. Xcode project: Swift package `firebase-ios-sdk` (up to next major from 12.0.0), product
+   `FirebaseMessaging` linked into the App target. Added to the `.xcodeproj` directly, NOT to
+   `CapApp-SPM/Package.swift`, which `cap sync` regenerates.
+4. `App.entitlements` with `aps-environment = development`, set as `CODE_SIGN_ENTITLEMENTS` for
+   Debug and Release. Ad hoc / TestFlight export re-signs it as `production`.
+5. New run-script build phase "Copy GoogleService-Info.plist": copies the gitignored plist into
+   the bundle when present and prints a warning otherwise, so a build without it still compiles.
+6. `ios.appendUserAgent: "PeckersApp/1"` added to the root config and all three `config/` files
+   (it was under `android` only, so the web app could not tell it was in the iOS app — the
+   `in-app` class, export-button hiding and app-specific messages were all browser-mode).
+7. `codemagic.yaml`: imports the env group `firebase` and writes
+   `GOOGLE_SERVICE_INFO_PLIST` (base64) to `ios/App/App/GoogleService-Info.plist`, validated
+   with `plutil -lint`. Unset → the build continues without push.
+
+**Rationale:**
+Shift reminders are the one feature that must survive the move from browser to app (see
+"Web Push does NOT work in an Android WebView"; the same holds for WKWebView). Using FCM on
+iOS keeps one server sender, one token table and one prune rule for both platforms.
+
+**Testing:**
+- `project.pbxproj`: balanced braces/parens; each new object id defined once and referenced
+  where expected. `Info.plist` / `App.entitlements` well-formed.
+- All four config files parse as JSON and carry `ios.appendUserAgent`.
+- **NOT tested:** the Swift compiles or the package resolves — there is no Mac here. The next
+  Codemagic run is the check. No device test is possible before the Apple Developer account.
+
+**Impact:**
+- **Users:** none yet — no iPhone has the app.
+- **Build/Release:** **Before the next Codemagic build**, create the env group `firebase` in
+  Codemagic (an imported group that doesn't exist can stop the build). To make push work:
+  (a) add an iOS app `uk.co.peckers.app` to the existing Firebase project and download
+  `GoogleService-Info.plist`; (b) store it base64-encoded as `GOOGLE_SERVICE_INFO_PLIST`
+  (secure) in that group; (c) after the Apple account is active, create an APNs Auth Key
+  (.p8) and upload it under Firebase › Project settings › Cloud Messaging › Apple app
+  configuration; (d) enable Push Notifications on the App ID. SPM resolution of Firebase
+  adds a few minutes to each cloud build.
+- **Android:** unaffected — no Android file changed, and the `android` config block is identical.
+
+---
+
+### Update 17: iOS ready for a signed build — iPhone-only, upload flags, shared scheme, signed workflows, status bar
+
+**Date:** 2026-10-20
+**Type:** Feature
+**Scope:** iOS project settings, Codemagic, status bar. Companion to the web repo's Update 267.
+Branch `feat/ios-app` — not on `main`.
+**Files Modified:**
+- `ios/App/App/Info.plist`
+- `ios/App/App/PrivacyInfo.xcprivacy` (new)
+- `ios/App/App/PeckersBridgeViewController.swift` (new)
+- `ios/App/App/SceneDelegate.swift`
+- `ios/App/App.xcodeproj/project.pbxproj`
+- `ios/App/App.xcodeproj/xcshareddata/xcschemes/App.xcscheme` (new)
+- `codemagic.yaml`
+- `mobile-updates.md`
+
+**Summary:**
+Clears the things that would have stopped the first signed build or App Store Connect upload,
+and adds the two signed Codemagic workflows. Also makes the status bar text follow the
+page's light/dark theme, so the clock and battery are never invisible.
+
+**Changes:**
+1. `TARGETED_DEVICE_FAMILY` `"1,2"` → `1` (iPhone only), and the `~ipad` orientation list
+   removed. A portrait-only iPad app is refused at upload unless it supports every orientation.
+2. `UIRequiredDeviceCapabilities` `armv7` → `arm64`.
+3. `ITSAppUsesNonExemptEncryption = false` — the app only uses HTTPS, which is exempt, so
+   TestFlight builds no longer stop on the export-compliance question.
+4. `PrivacyInfo.xcprivacy` added to Resources: no tracking; collects precise location and a
+   device ID (the push token), both linked to the user, for app functionality only. No
+   required-reason APIs in our own code (Capacitor and Firebase ship their own manifests).
+5. Shared scheme `App.xcscheme` committed — `xcodebuild archive` and `xcode-project build-ipa`
+   need `-scheme`, which the Capacitor template did not ship.
+6. `codemagic.yaml` restructured with YAML anchors (the simulator workflow behaves exactly as
+   before) and two new manually-started workflows: `ios-testflight` (App Store signing,
+   uploads to TestFlight) and `ios-adhoc` (ad hoc signing, `.ipa` artifact for registered
+   UDIDs). Both set `CFBundleVersion` to Codemagic's `BUILD_NUMBER` so every upload is newer.
+7. `PeckersBridgeViewController` (subclass of `CAPBridgeViewController`, now the scene's root)
+   registers a `peckersTheme` script message handler; `"dark"` → light status bar text,
+   `"light"` → dark text. Held through a weak proxy so the web view does not retain its
+   controller. Until the page reports, Capacitor's default (follow the phone) applies.
+
+**Rationale:**
+Steps 8 and 9 of the iOS plan start the moment the Apple account is approved; everything
+that can be prepared without it is now prepared, so the first signed build is a configuration
+exercise rather than a debugging one.
+
+**Testing:**
+- `project.pbxproj`: balanced; every new object id defined once and referenced where
+  expected; `TARGETED_DEVICE_FAMILY = 1` in both configurations.
+- `Info.plist`, `PrivacyInfo.xcprivacy`: balanced and well-formed.
+- `codemagic.yaml` parsed with js-yaml: three workflows, anchors resolve to the expected steps.
+- Web side: the theme messages fire on toggle (web Update 267).
+- **NOT tested:** Swift compile, package resolution and signing — needs the next Codemagic
+  run (simulator) and the Apple account (signed workflows).
+
+**Impact:**
+- **Users:** none yet.
+- **Build/Release:** one-time Codemagic setup before a signed run: env group `firebase`
+  (Update 16), an App Store Connect API key integration named exactly **`Peckers ASC`**, the
+  distribution certificate and the App Store / ad hoc profile under Code signing identities,
+  and the app record for `uk.co.peckers.app` in App Store Connect (TestFlight route).
+- **Android:** unaffected — no Android file changed.
+
+---
+
+### Update 18: Firebase moved to the Peckers account; release 1.0.2 (versionCode 4)
+
+**Date:** 2026-10-21
+**Type:** Release
+**Scope:** Android release build. Firebase project replaced. No shell code changed.
+Branch `feat/ios-app`.
+**Files Modified:**
+- `android/app/build.gradle`
+- `android/app/google-services.json` (gitignored — replaced by the owner, not committed)
+- `mobile-updates.md`
+
+**Summary:**
+The Firebase project behind push (`pms-pp`) had been created under a personal Google
+account. Since no staff had the app yet, it was replaced with a new project owned by the
+Peckers account, **`pms-app-8e58b`** (sender ID `1017846986384`), with the Android app and the
+iOS app `uk.co.peckers.app` both registered in it. This build is the first to carry it.
+
+**Changes:**
+1. Owner replaced `android/app/google-services.json` with the new project's file.
+2. Owner replaced `FIREBASE_SERVICE_ACCOUNT` in Vercel (Production and Preview) with the
+   new project's service-account key, base64-encoded, and redeployed production.
+3. `versionCode` 3 → 4, `versionName` "1.0.1" → "1.0.2".
+4. `npm run env:prod` → `server.url` `https://peckers-cashflow-pearl.vercel.app`, synced.
+5. `gradlew assembleRelease`, staged as `C:\NextJs\pms-apk\pms-android-v1.0.2.apk`
+   (SHA-256 `8d4d94de…8b70`).
+
+**Rationale:**
+The business, not one person's mailbox, has to own the credential that every shift
+reminder depends on. Replacing it before any staff install meant no device token had to be
+migrated.
+
+**Testing:**
+- Pre-build health check of the deployment this APK loads: `next build` ✓ (58 pages);
+  `https://peckers-cashflow-pearl.vercel.app` and `…-peckerschicken.vercel.app` serve the same
+  build; `/`, all four portal logins, `/manifest.webmanifest` and `/sw.js` ✓ 200.
+- `gradlew assembleRelease`: ✓ BUILD SUCCESSFUL, `processReleaseGoogleServices` ran.
+- `aapt2 dump badging`: ✓ `uk.co.peckers.app`, versionCode 4, versionName 1.0.2.
+- `aapt2 dump resources`: ✓ `project_id` `pms-app-8e58b`, `gcm_defaultSenderId` `1017846986384`.
+- `apksigner verify`: ✓ certificate SHA-256 `62f396e5…dd54`, same as every earlier release.
+- APK `assets/capacitor.config.json`: ✓ production `server.url`.
+- **NOT tested here:** install, sign-in, clock-in or a delivered reminder on a phone.
+
+**Impact:**
+- **Users:** none yet — the owner reinstalls on the test phone.
+- **Build/Release:** any phone token registered under `pms-pp` is now useless. FCM answers
+  it with `messaging/mismatched-credential`, which `lib/fcm.ts` does not treat as dead, so such
+  a row would never be pruned — clear old app rows from `push_subscriptions` /
+  `manager_push_subscriptions` if any remain. The next build that leaves this machine needs
+  versionCode 5. The old `pms-pp` project can be deleted once a reminder arrives through the
+  new one.

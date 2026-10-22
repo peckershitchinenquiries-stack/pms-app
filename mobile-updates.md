@@ -1669,3 +1669,82 @@ migrated.
   `manager_push_subscriptions` if any remain. The next build that leaves this machine needs
   versionCode 5. The old `pms-pp` project can be deleted once a reminder arrives through the
   new one.
+
+---
+
+### Update 19: iOS native behaviour: swipe-back, offline screen, resume version check
+
+**Date:** 2026-10-22
+**Type:** Feature
+**Scope:** iOS shell only. Ports Update 6's Android behaviour to the iPhone app.
+Branch `feat/ios-app`.
+**Files Modified:**
+- `ios/App/App/PeckersBridgeViewController.swift`
+- `ios/App/App/OfflineGate.swift` (new)
+- `ios/App/App/BuildFingerprint.swift` (new)
+- `ios/App/App.xcodeproj/project.pbxproj`
+- `mobile-updates.md`
+
+**Summary:**
+The iPhone app had none of the native behaviour Android got in Update 6. A screen with no
+in-page back link was a dead end, a lost network showed a blank page, and a phone left
+in the background kept running an old deployment. All three now match Android. They are
+native Swift in the shell, and the web app is unchanged.
+
+**Changes:**
+1. **Swipe-back.** `allowsBackForwardNavigationGestures = true` on the web view. iPhones have
+   no back button. WKWebView walks pushState history, so Next.js client-side navigation is
+   covered. As on Android, no route names are hardcoded. The gesture is switched off while the
+   offline screen is up, as Android blocks back there.
+2. **Offline screen.** New `OfflineGate` lays a native view over the web view. It uses the same
+   copy and fixed dark colours as Android's `offline_overlay.xml` and has a "Try again" button
+   that reloads `server.url`. It is not Capacitor's `server.errorPath`, because a local error
+   page would reload only itself. An `NWPathMonitor` retries automatically when the network
+   comes back. "Still no connection" shows if Try again is pressed while still offline. The
+   status bar turns light while the screen is up and goes back to the page's theme when it
+   hides.
+3. **Detecting a failed load.** `CAPBridgeViewController.loadView` is `final`, so Capacitor's
+   `WebViewDelegationHandler` cannot be replaced by a subclass. A small `NavigationObserver`
+   becomes the web view's navigation delegate. It forwards every call to Capacitor's handler
+   (`responds(to:)` + `forwardingTarget(for:)`). Its three own methods (`didFinish`,
+   `didFail`, `didFailProvisionalNavigation`) call through to Capacitor first. Only
+   `NSURLErrorDomain` failures other than `NSURLErrorCancelled` show the screen. A tap that
+   interrupts a load, and a link Capacitor sends to Safari (`WebKitErrorDomain`), are not
+   network failures.
+4. **Resume version check.** New `BuildFingerprint`, the same rule as `BuildFingerprint.java`.
+   It hashes (SHA-256) every `/_next/static/...` path in the HTML served at `server.url`,
+   records the hash after each page load (UserDefaults), and compares it on resume. Same
+   thresholds as Android: under 60s away does nothing, 60s to 12h reloads only on a confirmed
+   difference, and over 12h always reloads. Driven by `UIScene` background/foreground
+   notifications. An unreachable server, or a page with no Next.js assets, leaves the web
+   view alone.
+5. Both new files are registered in the App target's Sources phase (`F1EB000A`–`F1EB000D`).
+
+**Not ported, on purpose:**
+- **Exit confirmation.** iOS apps do not quit themselves, and there is no back button to
+  trigger it.
+- **Cookie flush on pause.** WKWebView has no flush API. It writes persistent cookies from
+  its own process, which an app kill does not take down. To check on a device: sign in, kill
+  the app at once, and reopen it.
+
+**Rationale:**
+The same staff use both platforms. On iOS, a dead-end screen or a blank page during a signal
+drop at the store would make the app look broken. That would hurt most at clock-in, the one
+thing staff open it for.
+
+**Testing:**
+- `project.pbxproj`: braces and parentheses balanced, and each new id appears exactly twice
+  (definition and reference). Capacitor 8.5's iOS source was read to confirm the APIs used
+  are public: `capacitorDidLoad`, `webView`, `bridge.config.appStartServerURL`,
+  `setStatusBarStyle`, and the delegate being assigned only in `prepareWebView`.
+- **NOT tested: the Swift has not been compiled.** This machine has no Swift toolchain. The
+  next `ios-simulator` Codemagic run is the compile check. It also checks Updates 16 and 17,
+  which have not been compiled either.
+- **NOT tested on a device or simulator:** the swipe gesture, the offline screen
+  (aeroplane mode, then turn it off), and a reload after a deployment.
+
+**Impact:**
+- **Users:** none yet. No iPhone has the app.
+- **Web app:** nothing in `C:\NextJs\peckers-cashflow` was touched.
+- **Build/Release:** two more Swift files in the App target. No new package; `Network` and
+  `CryptoKit` are system frameworks on iOS 15. Android is unaffected; no Android file changed.

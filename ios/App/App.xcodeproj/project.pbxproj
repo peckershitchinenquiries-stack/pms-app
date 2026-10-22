@@ -19,6 +19,8 @@
 		F1EB00012F0A000100000001 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = F1EB00042F0A000100000001 /* FirebaseMessaging */; };
 		F1EB00072F0A000100000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F1EB00062F0A000100000001 /* PrivacyInfo.xcprivacy */; };
 		F1EB00092F0A000100000001 /* PeckersBridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1EB00082F0A000100000001 /* PeckersBridgeViewController.swift */; };
+		F1EB000B2F0A000100000001 /* OfflineGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1EB000A2F0A000100000001 /* OfflineGate.swift */; };
+		F1EB000D2F0A000100000001 /* BuildFingerprint.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1EB000C2F0A000100000001 /* BuildFingerprint.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +38,8 @@
 		F1EB00022F0A000100000001 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		F1EB00062F0A000100000001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F1EB00082F0A000100000001 /* PeckersBridgeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeckersBridgeViewController.swift; sourceTree = "<group>"; };
+		F1EB000A2F0A000100000001 /* OfflineGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineGate.swift; sourceTree = "<group>"; };
+		F1EB000C2F0A000100000001 /* BuildFingerprint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildFingerprint.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -73,6 +77,8 @@
 			children = (
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
 				F1EB00082F0A000100000001 /* PeckersBridgeViewController.swift */,
+				F1EB000A2F0A000100000001 /* OfflineGate.swift */,
+				F1EB000C2F0A000100000001 /* BuildFingerprint.swift */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -197,6 +203,8 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 				F1EB00092F0A000100000001 /* PeckersBridgeViewController.swift in Sources */,
+				F1EB000B2F0A000100000001 /* OfflineGate.swift in Sources */,
+				F1EB000D2F0A000100000001 /* BuildFingerprint.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1748,3 +1748,97 @@ thing staff open it for.
 - **Web app:** nothing in `C:\NextJs\peckers-cashflow` was touched.
 - **Build/Release:** two more Swift files in the App target. No new package; `Network` and
   `CryptoKit` are system frameworks on iOS 15. Android is unaffected; no Android file changed.
+
+---
+
+### Update 20: iOS simulator build green with Updates 16, 17 and 19 compiled, Firebase config bundled
+
+**Date:** 2026-10-22
+**Type:** Documentation
+**Scope:** Docs only. Records the first cloud build that compiles the push, status-bar
+and native-behaviour Swift. No build file changed.
+**Files Modified:**
+- `mobile-updates.md`
+
+**Summary:**
+The owner added `GOOGLE_SERVICE_INFO_PLIST` to the Codemagic `firebase` group and ran
+`ios-simulator` on the code merged in Update 19. It went green, and the downloaded
+`Peckers-simulator.zip` was unpacked and inspected. The Swift from Updates 16, 17 and 19,
+which had never been compiled, now compiles and links. Firebase is resolved through SPM and
+its iOS config is in the bundle.
+
+**Changes:**
+1. None to the project. This entry records verification only.
+
+**Rationale:**
+Updates 16, 17 and 19 were all logged as "NOT tested: the Swift compiles". This closes that
+gap before the Apple Developer account arrives, so the first signed build only has to deal
+with signing.
+
+**Testing (downloaded artifact, unpacked and inspected):**
+- `Info.plist`: ✓ `uk.co.peckers.app`, display name `Peckers`, `UIDeviceFamily [1]`
+  (iPhone only), portrait only, `arm64`, `ITSAppUsesNonExemptEncryption false`,
+  `FirebaseAppDelegateProxyEnabled false`, location usage string present. MinimumOSVersion
+  15.0, SDK `iphonesimulator26.5`, Xcode 26.6.
+- `GoogleService-Info.plist` in the bundle: ✓ `BUNDLE_ID uk.co.peckers.app`,
+  `PROJECT_ID pms-app-8e58b`, sender `1017846986384`, GCM enabled. The CI step and the
+  "Copy GoogleService-Info.plist" build phase both work.
+- Firebase SPM bundles present (Core, CoreInternal, Installations, Messaging); binary
+  references `FIRMessaging`.
+- `capacitor.config.json`: ✓ production `server.url`, `ios.appendUserAgent PeckersApp/1`,
+  `PushNotificationsPlugin`.
+- Binary (universal x86_64 + arm64 simulator) contains `PeckersBridgeViewController`,
+  `OfflineGate`, `BuildFingerprint`, `NavigationObserver`, `peckersTheme`, the offline copy,
+  the `/_next/static/` pattern, `setAllowsBackForwardNavigationGestures:`, `NWPathMonitor`,
+  `UISceneDidEnterBackgroundNotification` and `appStartServerURL`.
+- **NOT tested:** running the app. A simulator build runs only in the iOS Simulator on macOS.
+  Swipe-back, the offline screen, the resume reload, the theme-matched status bar, the
+  WKWebView location prompt and push delivery all wait for a signed build on an iPhone.
+
+**Impact:**
+- **Users:** none yet.
+- **Web app:** nothing in `C:\NextJs\peckers-cashflow` was touched.
+- **Build/Release:** what remains before an iPhone install is Apple-account setup only:
+  App Store Connect app record, the `Peckers ASC` API key integration, Push Notifications on
+  the App ID, and an APNs key uploaded to Firebase. Then `ios-testflight` or `ios-adhoc`.
+
+---
+
+### Update 21: iPhone camera and photo-library permission text for profile photos
+
+**Date:** 2026-10-26
+**Type:** Config
+**Scope:** iOS project (`Info.plist`). Android needs no change.
+**Files Modified:**
+- `ios/App/App/Info.plist`
+
+**Summary:**
+The web app now lets staff add an optional profile photo inside the app (peckers-cashflow
+Update 268), through an ordinary `<input type="file" accept="image/*">`. On iOS, WKWebView
+offers "Take Photo" for that input, and iOS terminates an app that opens the camera without
+an `NSCameraUsageDescription`. The two usage strings are added so the picker works.
+
+**Changes:**
+1. Added `NSCameraUsageDescription`: "Peckers uses the camera only when you choose to take a
+   profile photo."
+2. Added `NSPhotoLibraryUsageDescription`: "Peckers opens your photos only when you choose one
+   for your profile photo."
+
+**Rationale:**
+A missing camera usage string is a crash on first tap, not a soft failure. Android needs
+nothing: Capacitor's `BridgeWebChromeClient` serves the file chooser, and because the manifest
+does not declare `CAMERA`, the camera opens through `ACTION_IMAGE_CAPTURE` with no runtime
+permission, using the existing `${applicationId}.fileprovider` (`file_paths.xml` already
+covers `external-path` and `cache-path`).
+
+**Testing:**
+- Plist edited by hand; keys sit in alphabetical order beside the location string.
+- **NOT tested:** an iOS build or a device. Needs the next `ios-simulator` / signed build.
+- **NOT tested on Android hardware yet:** the camera and gallery pickers inside the APK.
+
+**Impact:**
+- **Users:** iPhone staff can take or choose a profile photo without the app closing.
+- **Web app:** the feature itself lives in `peckers-cashflow` (Update 268); nothing else there
+  depends on this.
+- **Build/Release:** iOS needs a rebuild for the strings to ship. The Android APK is unchanged
+  and needs no rebuild — it loads the web app remotely.

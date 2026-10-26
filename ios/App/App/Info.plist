@@ -28,8 +28,12 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Peckers uses the camera only when you choose to take a profile photo.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Peckers uses your location to confirm you are at the store when you clock in or out.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Peckers opens your photos only when you choose one for your profile photo.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

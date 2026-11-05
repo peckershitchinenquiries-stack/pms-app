@@ -1,7 +1,12 @@
 package uk.co.peckers.app;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.webkit.CookieManager;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
@@ -18,6 +23,13 @@ public class MainActivity extends BridgeActivity {
     private static final long VERSION_CHECK_AFTER_MS = 60_000L;
     // Long enough away that reloading is right whether or not the deploy moved.
     private static final long FORCE_RELOAD_AFTER_MS = 12 * 60 * 60 * 1000L;
+    // A second renderer loss this soon after a recovery is a page that kills it
+    // on load; recreating again would loop for ever, so the app closes instead.
+    private static final long RENDERER_CRASH_LOOP_MS = 15_000L;
+
+    // Static: recreate() builds a new activity instance, and the guard has to
+    // survive it.
+    private static long lastRendererRecoveryAt = 0L;
 
     private OfflineGate offline;
     private BuildFingerprint fingerprint;
@@ -28,6 +40,26 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         registerBackHandler();
+        createReminderChannel();
+    }
+
+    /**
+     * The channel the manifest names as FCM's default. FCM only uses a default
+     * channel that already exists, else it falls back to "Miscellaneous", so it
+     * is created at launch. Idempotent: an existing channel keeps whatever the
+     * user changed in settings.
+     */
+    private void createReminderChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        if (manager == null) return;
+        NotificationChannel channel = new NotificationChannel(
+            getString(R.string.reminder_channel_id),
+            getString(R.string.reminder_channel_name),
+            NotificationManager.IMPORTANCE_HIGH
+        );
+        channel.setDescription(getString(R.string.reminder_channel_description));
+        manager.createNotificationChannel(channel);
     }
 
     @Override
@@ -42,6 +74,19 @@ public class MainActivity extends BridgeActivity {
                 @Override
                 public void onPageLoaded(WebView view) {
                     fingerprint.record(serverUrl());
+                }
+
+                // Without a listener returning true, Android kills the whole
+                // app when the WebView's renderer dies (low memory, often while
+                // the camera is open for a profile photo). The dead WebView can
+                // never draw again, so the activity is rebuilt with a new one.
+                @Override
+                public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+                    long now = SystemClock.elapsedRealtime();
+                    boolean looping = lastRendererRecoveryAt != 0L && now - lastRendererRecoveryAt < RENDERER_CRASH_LOOP_MS;
+                    lastRendererRecoveryAt = now;
+                    runOnUiThread(looping ? MainActivity.this::finish : MainActivity.this::recreate);
+                    return true;
                 }
             }
         );

@@ -22,6 +22,20 @@
             </intent-filter>
         </activity>
 
+        <!-- How FCM draws a reminder while the app is backgrounded or closed,
+             which is the only time the system tray draws it at all. Without the
+             icon Android shows a white square; without an existing channel it
+             files reminders under "Miscellaneous". MainActivity creates it. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notificationAccent" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="@string/reminder_channel_id" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

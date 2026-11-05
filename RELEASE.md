@@ -174,3 +174,71 @@ functionality" policy for a WebView-only app.
   icon), Task 8 device testing, Task 9 rollout.
 - Still true of every build: CSV/XLSX export and `window.print()` do nothing in
   an Android WebView, and cover drivers get no reminders on any platform.
+
+---
+
+## 7. iPhone (iOS) release
+
+Built in the cloud on Codemagic (`codemagic.yaml`) — there is no Mac. Everything
+below except the first block is already done in the project; it is listed so the
+first signed build is a checklist, not a debugging session.
+
+### 7.1 One-time setup once the Apple Developer account is approved
+
+1. **App ID** `uk.co.peckers.app` in the Apple Developer portal, with the
+   **Push Notifications** capability ticked.
+2. **APNs Auth Key** (`.p8`): Certificates, Identifiers & Profiles › Keys › new
+   key with APNs. Upload it to Firebase project `pms-app-8e58b` › Project
+   settings › Cloud Messaging › Apple app configuration, with its Key ID and the
+   Team ID. One key covers development and production. Without it Firebase
+   issues tokens but no reminder is ever delivered to an iPhone.
+3. **App Store Connect app record** for bundle id `uk.co.peckers.app`
+   (needed for TestFlight and for an unlisted App Store app).
+4. **Codemagic:**
+   - App Store Connect API key integration named exactly **`Peckers ASC`**
+   - env group **`firebase`** holding `GOOGLE_SERVICE_INFO_PLIST` (base64) —
+     already set, used by the green simulator builds
+   - distribution certificate + profile (App Store, or Ad hoc) under Code
+     signing identities
+5. **Privacy answers** in App Store Connect must match `PrivacyInfo.xcprivacy`:
+   precise location, device ID, user ID, name, email address, photos — all
+   linked to the user, none used for tracking, all for app functionality.
+
+### 7.2 What the signed workflows enforce
+
+`ios-testflight` and `ios-adhoc` switch `App.entitlements` to
+`aps-environment = production` before signing (every distribution profile is
+production; the committed `development` value is for simulator/dev builds), then
+**fail the run** unless the finished `.ipa` is signed for production push and
+carries `GoogleService-Info.plist`. A signed build that cannot receive shift
+reminders never leaves Codemagic.
+
+### 7.3 Choosing how staff install it — decide before the first build
+
+| Route | Good | Limits |
+| --- | --- | --- |
+| **TestFlight** (`ios-testflight`) | Easiest to start. Staff install the TestFlight app and accept an invite; updates arrive automatically. | **Every build expires after 90 days** — a new build must be uploaded at least every ~80 days or the app stops opening. Staff outside your App Store Connect team need the build to pass Beta App Review. |
+| **Ad hoc** (`ios-adhoc`) | No Apple review. A link installs the `.ipa`. | Every iPhone's **UDID** registered first, max **100 iPhones per year**, and the profile rebuilt after each new phone. Expires with the profile (1 year). |
+| **Unlisted App Store app** | Permanent, normal App Store updates, only people with the link can find it. | Full App Review, and Apple may refuse a web-wrapper app (guideline 4.2) — the native offline screen, push and location help the case. Apply via Apple's unlisted-app request form after the record exists. |
+
+**Recommendation:** start on TestFlight for the pilot (owner + a few managers),
+and request **unlisted distribution** before the whole staff estate installs —
+it is the only route without a 90-day or 100-device ceiling.
+
+### 7.4 How an update reaches an iPhone
+
+- **Web changes need nothing**, exactly as on Android.
+- **Shell changes (`ios/**`, `capacitor.config.json`)** need a new Codemagic
+  build. Bump `PeckersApp/N` in all four configs when native code changes, so
+  the web app can tell an old install to update (see `CLAUDE.md`).
+
+### 7.5 First run on an iPhone — check these
+
+1. The app opens on the crew login, and the offline screen, swipe-back and
+   status bar all work (one window, built by `SceneDelegate`).
+2. Clock in: **one** location prompt, worded "Peckers uses your location to
+   confirm you are at the store…". A second prompt naming the website means the
+   location bridge is not active.
+3. Turn on reminders → a test reminder arrives with sound.
+4. Profile photo: camera and photo library both open without the app closing.
+5. Kill the app straight after signing in, reopen: still signed in.

@@ -16,4 +16,7 @@
     <color name="offlineMutedText">#a1a1aa</color>
     <color name="offlineButton">#f4f4f5</color>
     <color name="offlineButtonText">#0f0f0f</color>
+
+    <!-- Tint of the reminder icon in the notification shade: the web app's gold. -->
+    <color name="notificationAccent">#B88620</color>
 </resources>

@@ -14,4 +14,9 @@
     <string name="exit_message">You will stay signed in.</string>
     <string name="exit_confirm">Close</string>
     <string name="exit_cancel">Stay</string>
+
+    <!-- The id must match the FCM default channel in AndroidManifest.xml. -->
+    <string name="reminder_channel_id" translatable="false">shift_reminders</string>
+    <string name="reminder_channel_name">Shift reminders</string>
+    <string name="reminder_channel_description">Reminders to clock in when your shift starts and to clock out when it ends.</string>
 </resources>

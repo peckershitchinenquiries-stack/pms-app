@@ -7,6 +7,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = scene as? UIWindowScene else { return }
 
+        // The ONLY place the window is built. Info.plist names no storyboard
+        // (UISceneStoryboardFile / UIMainStoryboardFile were removed): with one,
+        // UIKit also builds Main.storyboard's plain CAPBridgeViewController,
+        // which could start a second Capacitor bridge without the offline
+        // screen, swipe-back, theme or location bridge.
         window = UIWindow(windowScene: windowScene)
         window?.rootViewController = PeckersBridgeViewController()
         window?.makeKeyAndVisible()

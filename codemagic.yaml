@@ -44,6 +44,14 @@ definitions:
       name: Set the build number
       script: /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" ios/App/App/Info.plist
 
+    # App.entitlements says `development` so local/simulator builds work. Every
+    # distribution profile (App Store AND ad hoc) carries `production`, and an
+    # archive whose entitlement disagrees with its profile fails to sign — or,
+    # signed, gets an APNs token FCM cannot deliver to. Signed workflows only.
+    - &push_production
+      name: Use the production push environment
+      script: /usr/libexec/PlistBuddy -c "Set :aps-environment production" ios/App/App/App.entitlements
+
     - &signing
       name: Apply the signing profiles
       script: xcode-project use-profiles
@@ -52,6 +60,23 @@ definitions:
     - &build_ipa
       name: Build the signed .ipa
       script: xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
+
+    # A signed build without push is a build staff would install and silently
+    # never get a shift reminder on, so these fail the run instead of shipping.
+    - &verify_push
+      name: Check the .ipa can receive shift reminders
+      script: |
+        set -e
+        IPA=$(ls build/ios/ipa/*.ipa | head -n 1)
+        rm -rf /tmp/ipa-check && mkdir -p /tmp/ipa-check
+        unzip -q "$IPA" -d /tmp/ipa-check
+        APP=$(ls -d /tmp/ipa-check/Payload/*.app | head -n 1)
+        codesign -d --entitlements :- "$APP" > /tmp/ipa-check/entitlements.plist 2>/dev/null
+        APS=$(/usr/libexec/PlistBuddy -c "Print :aps-environment" /tmp/ipa-check/entitlements.plist)
+        echo "aps-environment: $APS"
+        [ "$APS" = "production" ] || { echo "Signed build is not on production push"; exit 1; }
+        [ -f "$APP/GoogleService-Info.plist" ] || { echo "GoogleService-Info.plist missing - set GOOGLE_SERVICE_INFO_PLIST in the firebase group"; exit 1; }
+        echo "Push OK: production APNs entitlement and Firebase config present"
 
   signed_artifacts: &signed_artifacts
     - build/ios/ipa/*.ipa
@@ -114,8 +139,10 @@ workflows:
       - *firebase_config
       - *cap_sync
       - *build_number
+      - *push_production
       - *signing
       - *build_ipa
+      - *verify_push
     artifacts: *signed_artifacts
     publishing:
       app_store_connect:
@@ -140,6 +167,8 @@ workflows:
       - *firebase_config
       - *cap_sync
       - *build_number
+      - *push_production
       - *signing
       - *build_ipa
+      - *verify_push
     artifacts: *signed_artifacts

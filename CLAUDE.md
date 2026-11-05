@@ -145,6 +145,7 @@ committed before an `.ipa` can be produced. The simulator build sidesteps it wit
 | `appName` | `Peckers` | Shown under the launcher icon |
 | Theme colour | `#0f0f0f` | Matches `viewport.themeColor` in the web app's `app/layout.tsx` and `theme_color` in `public/manifest.webmanifest`. Any other value shows as a visible seam between the native chrome and the page. |
 | Orientation | **Portrait only** | Locked in `AndroidManifest.xml` and in `UISupportedInterfaceOrientations` in `ios/App/App/Info.plist`. The web app's mobile layouts are built for portrait; the manifest already declares `"orientation": "portrait"`. |
+| User-agent marker | `PeckersApp/N` (`appendUserAgent`, android AND ios, all four configs) | The web app detects the app by `PeckersApp` and reads N as the shell version. **Bump N whenever native code changes**, and raise `MIN_PECKERS_APP_VERSION` in the web repo's `lib/is-native-app.ts` when a phone must not stay on the old build — below it the web app tells the person to update. 2 since Update 22. |
 | `webDir` | `www` | Must exist or `cap sync` fails, even though remote mode ignores its contents |
 
 ---

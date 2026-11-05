@@ -1808,7 +1808,8 @@ with signing.
 
 **Date:** 2026-10-26
 **Type:** Config
-**Scope:** iOS project (`Info.plist`). Android needs no change.
+**Scope:** iOS project (`Info.plist`). Android needs no change. Committed on `feat/ios-app`
+as `9a57e84` and merged to `main` on 2026-10-26 as `7c0ed5b`.
 **Files Modified:**
 - `ios/App/App/Info.plist`
 
@@ -1842,3 +1843,157 @@ covers `external-path` and `cache-path`).
   depends on this.
 - **Build/Release:** iOS needs a rebuild for the strings to ship. The Android APK is unchanged
   and needs no rebuild — it loads the web app remotely.
+
+---
+
+### Update 22: Renderer-crash recovery, reminder icon and channel, app version marker `PeckersApp/2` — release 1.0.3 (versionCode 5)
+
+**Date:** 2026-11-05
+**Type:** Bug Fix
+**Scope:** Android shell (crash recovery, notifications), the user-agent marker on both platforms,
+Android release build. Companion to the web repo's Update 271. Branch `fix/app-pre-rollout` —
+not committed.
+**Files Modified:**
+- `android/app/src/main/java/uk/co/peckers/app/MainActivity.java`
+- `android/app/src/main/AndroidManifest.xml`
+- `android/app/src/main/res/drawable/ic_stat_notification.xml` (new)
+- `android/app/src/main/res/values/colors.xml`
+- `android/app/src/main/res/values/strings.xml`
+- `android/app/build.gradle`
+- `capacitor.config.json`, `config/capacitor.config.{lan,preview,prod}.json`,
+  `ios/App/App/capacitor.config.json`
+- `CLAUDE.md`
+- `mobile-updates.md`
+
+**Summary:**
+Three Task 7 leftovers that would otherwise each need a reinstall on every staff phone after
+rollout, done before it: the app no longer closes when the WebView's renderer dies, reminders get
+a proper status-bar icon and their own "Shift reminders" channel, and the user agent now carries a
+version the web app can read to tell an old install to update.
+
+**Changes:**
+1. `MainActivity`: a `WebViewListener.onRenderProcessGone` that returns true and `recreate()`s the
+   activity with a fresh WebView. Without it Android kills the whole app when the renderer dies
+   (low memory, often with the camera open). A second loss within 15s `finish()`es instead of
+   looping on a page that kills the renderer on load.
+2. `MainActivity.createReminderChannel()` at launch: channel `shift_reminders`, "Shift reminders",
+   importance HIGH. Idempotent, so a user's own channel settings survive.
+3. Manifest meta-data for FCM's defaults: `default_notification_icon` →
+   `@drawable/ic_stat_notification` (a white bell vector; the launcher icon draws as a white
+   square), `default_notification_color` → `#B88620` (the web app's gold), and
+   `default_notification_channel_id` → `shift_reminders`.
+4. `appendUserAgent` `PeckersApp/1` → `PeckersApp/2` on Android and iOS in every config. The number
+   is now the shell version: bump it whenever native code changes, and raise the web app's
+   `MIN_PECKERS_APP_VERSION` (lib/is-native-app.ts) when a release must not be skipped. The web
+   app shows an "update the app" banner below that minimum.
+5. `versionCode` 4 → 5, `versionName` "1.0.2" → "1.0.3"; `npm run env:prod` synced.
+
+**Rationale:**
+After rollout, any native change means every phone reinstalls by hand, and until now nothing could
+even tell which phones were out of date. Fixing the known native gaps first, and adding the version
+signal in the same build, means the first staff install is one that can be told to update later.
+
+**Testing:**
+- `gradlew assembleRelease lintVitalRelease`: ✓ BUILD SUCCESSFUL (1m 7s)
+- `aapt2 dump badging`: ✓ `uk.co.peckers.app`, versionCode 5, versionName 1.0.3
+- APK `assets/capacitor.config.json`: ✓ `PeckersApp/2` (android and ios blocks), production `server.url`
+- APK manifest: ✓ the three `com.google.firebase.messaging.default_notification_*` entries
+- `apksigner verify`: ✓ certificate SHA-256 `62f396e5…dd54`, same as every earlier release
+- APK SHA-256 `13814920…5a61` at `android/app/build/outputs/apk/release/app-release.apk`
+  (not staged to `C:\NextJs\pms-apk`)
+- **NOT tested on a phone:** install over 1.0.2, a reminder showing the bell in the status bar and
+  "Shift reminders" in app notification settings, renderer recovery (`chrome://crash` cannot be
+  opened from the app; `adb shell am crash` kills the app process, not the renderer), and the
+  web app's update banner disappearing once 1.0.3 is installed.
+- **iOS:** only the config string changed; picked up by the next Codemagic `cap sync ios`.
+
+**Impact:**
+- **Users:** none yet — the owner reinstalls on the test phone. Until then the 1.0.2 app reports
+  `PeckersApp/1` and will show the web app's update banner once Update 271 is deployed.
+- **Web app:** reads the new marker (Update 271); `includes("PeckersApp")` checks are unaffected.
+- **Build/Release:** the next build that leaves this machine needs versionCode 6.
+
+---
+
+### Update 23: iOS pre-release fixes — one window, one location prompt, production push enforced, privacy manifest, release checklist
+
+**Date:** 2026-11-05
+**Type:** Bug Fix
+**Scope:** iOS shell and the Codemagic signed workflows. Android and the web app unchanged.
+Branch `fix/app-pre-rollout` — not committed.
+**Files Modified:**
+- `ios/App/App/Info.plist`
+- `ios/App/App/SceneDelegate.swift`
+- `ios/App/App/LocationBridge.swift` (new)
+- `ios/App/App/PeckersBridgeViewController.swift`
+- `ios/App/App.xcodeproj/project.pbxproj`
+- `ios/App/App/PrivacyInfo.xcprivacy`
+- `codemagic.yaml`
+- `RELEASE.md`
+- `mobile-updates.md`
+
+**Summary:**
+Fixes the iOS findings of the pre-rollout audit that need no Apple account. The app could
+have started a second Capacitor bridge, iPhone staff would have had a website-level location
+prompt on top of the app's (repeating across launches), a signed build could ship with
+development push or no Firebase config, and the privacy manifest was missing data types and
+the UserDefaults declaration App Store Connect checks at upload.
+
+**Changes:**
+1. **One window.** `UISceneStoryboardFile` and `UIMainStoryboardFile` removed from `Info.plist`.
+   With them, UIKit also instantiates `Main.storyboard`'s plain `CAPBridgeViewController`
+   alongside the `PeckersBridgeViewController` that `SceneDelegate` builds — a possible second
+   bridge without the offline screen, swipe-back or theme. `SceneDelegate` is now the only
+   place the window is made (commented there). `LaunchScreen` is untouched.
+2. **One location prompt.** New `LocationBridge`: a document-start, main-frame-only script
+   replaces `navigator.geolocation` (`getCurrentPosition`, `watchPosition`, `clearWatch`) and
+   answers `navigator.permissions.query({name:"geolocation"})`; positions come from
+   `CLLocationManager` (best accuracy) through the `peckersLocation` message handler. The page,
+   `lib/geolocation.ts` and the geofence are unchanged. Behaviour kept from the browser:
+   timeouts count only once updates start (never while the prompt is up), cached fixes older
+   than `maximumAge` (min 10s) are dropped, denial is error code 1 and cancels watches,
+   `locationUnknown` is treated as transient, updates stop on `pagehide` / when the last watch
+   clears / on each new document, and restart on a back-forward-cache restore. Messages from
+   iframes are ignored. Registered in the App target (`F1EB000E` / `F1EB000F`).
+3. **Production push enforced.** Signed workflows run a new `push_production` step
+   (`aps-environment` → `production` in `App.entitlements`; every distribution profile is
+   production, and a mismatch fails signing) and a `verify_push` step that unzips the `.ipa`,
+   reads the signed entitlements, and fails the run unless `aps-environment` is `production` and
+   `GoogleService-Info.plist` is in the bundle. The simulator workflow is unchanged.
+4. **Privacy manifest.** Collected data types now also list user ID, name, email address and
+   photos (profile photo, Update 21 / web Update 268) alongside precise location and device ID;
+   `NSPrivacyAccessedAPICategoryUserDefaults` declared with reason `CA92.1` for
+   `BuildFingerprint` (Update 19 added that use after Update 17 said there was none).
+5. **`RELEASE.md` section 7**: Apple-account setup (App ID push capability, APNs `.p8` to
+   Firebase, App Store Connect record, Codemagic integration), what the signed workflows now
+   enforce, the TestFlight / ad hoc / unlisted App Store comparison with a recommendation, and a
+   first-run device checklist.
+
+**Rationale:**
+Each of these would surface only after the Apple account is approved — as a refused upload, a
+signing failure, an app with no reminders, or a daily second location prompt at clock-in —
+when every fix costs another cloud build. Fixing them now leaves the first signed build to
+signing alone.
+
+**Testing:**
+- `Info.plist`, `App.entitlements`, `PrivacyInfo.xcprivacy`: ✓ parse with `plistlib`; no
+  storyboard keys remain; six data types and the UserDefaults reason present.
+- `project.pbxproj`: ✓ braces/parentheses balanced; `F1EB000E` appears 3 times (definition,
+  build file, group) and `F1EB000F` twice (definition, Sources phase).
+- `codemagic.yaml`: ✓ parses; `ios-testflight` and `ios-adhoc` run build number → production
+  push → signing → build → verify; `ios-simulator` unchanged.
+- Location shim, run in Node against a fake native side: ✓ 13/13 — reset on load, start on
+  first watch, no timeout while the prompt is up, stale cached fix dropped, fresh fix
+  delivered, timeout cancelled by a fix, stop when the last watch clears, TIMEOUT (3) after
+  start with no fix, denial is code 1, permission request bridged and answered, other
+  permission names untouched, `getCurrentPosition` fires once.
+- **NOT tested: the Swift has not been compiled** (no Mac here). The next `ios-simulator`
+  Codemagic run is the compile check. Nothing has run on an iPhone; `RELEASE.md` §7.5 is the
+  device checklist.
+
+**Impact:**
+- **Users:** none yet — no iPhone has the app. When they do: one location prompt, as
+  "Peckers", remembered in Settings.
+- **Web app:** unchanged.
+- **Build/Release:** signed iOS runs now fail loudly instead of shipping without push. Android
+  unaffected (no Android file changed; the 1.0.3 APK from Update 22 needs no rebuild).

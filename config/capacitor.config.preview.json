@@ -4,10 +4,10 @@
   "webDir": "www",
   "android": {
     "allowMixedContent": false,
-    "appendUserAgent": "PeckersApp/1"
+    "appendUserAgent": "PeckersApp/2"
   },
   "ios": {
-    "appendUserAgent": "PeckersApp/1"
+    "appendUserAgent": "PeckersApp/2"
   },
   "server": {
     "androidScheme": "https",

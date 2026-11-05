@@ -21,6 +21,7 @@
 		F1EB00092F0A000100000001 /* PeckersBridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1EB00082F0A000100000001 /* PeckersBridgeViewController.swift */; };
 		F1EB000B2F0A000100000001 /* OfflineGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1EB000A2F0A000100000001 /* OfflineGate.swift */; };
 		F1EB000D2F0A000100000001 /* BuildFingerprint.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1EB000C2F0A000100000001 /* BuildFingerprint.swift */; };
+		F1EB000F2F0A000100000001 /* LocationBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1EB000E2F0A000100000001 /* LocationBridge.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +41,7 @@
 		F1EB00082F0A000100000001 /* PeckersBridgeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeckersBridgeViewController.swift; sourceTree = "<group>"; };
 		F1EB000A2F0A000100000001 /* OfflineGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineGate.swift; sourceTree = "<group>"; };
 		F1EB000C2F0A000100000001 /* BuildFingerprint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildFingerprint.swift; sourceTree = "<group>"; };
+		F1EB000E2F0A000100000001 /* LocationBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationBridge.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,6 +81,7 @@
 				F1EB00082F0A000100000001 /* PeckersBridgeViewController.swift */,
 				F1EB000A2F0A000100000001 /* OfflineGate.swift */,
 				F1EB000C2F0A000100000001 /* BuildFingerprint.swift */,
+				F1EB000E2F0A000100000001 /* LocationBridge.swift */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -205,6 +208,7 @@
 				F1EB00092F0A000100000001 /* PeckersBridgeViewController.swift in Sources */,
 				F1EB000B2F0A000100000001 /* OfflineGate.swift in Sources */,
 				F1EB000D2F0A000100000001 /* BuildFingerprint.swift in Sources */,
+				F1EB000F2F0A000100000001 /* LocationBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

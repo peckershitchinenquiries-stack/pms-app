@@ -4,7 +4,8 @@ import Capacitor
 
 // The native behaviour the Android shell has in MainActivity: back navigation,
 // an offline screen, and a reload on resume after a new deployment. Plus the
-// status bar text, which follows the page's own light/dark setting.
+// status bar text, which follows the page's own light/dark setting, and the
+// page's geolocation, answered by Core Location (LocationBridge).
 class PeckersBridgeViewController: CAPBridgeViewController {
 
     // Must match THEME_MESSAGE_HANDLER in the web repo's ThemeProvider.
@@ -18,6 +19,7 @@ class PeckersBridgeViewController: CAPBridgeViewController {
     private var offline: OfflineGate?
     private let fingerprint = BuildFingerprint()
     private var navigationObserver: NavigationObserver?
+    private var locationBridge: LocationBridge?
     private var backgroundedAt: Date?
 
     // The page draws under the status bar (viewport-fit=cover) and can be in a
@@ -34,6 +36,15 @@ class PeckersBridgeViewController: CAPBridgeViewController {
         webView.configuration.userContentController.add(
             WeakScriptMessageHandler(self),
             name: Self.themeHandler
+        )
+
+        // Added here, before Capacitor's first load, so even the first page
+        // gets the Core Location answer and never WebKit's own prompt.
+        locationBridge = LocationBridge(webView: webView)
+        webView.configuration.userContentController.addUserScript(LocationBridge.userScript)
+        webView.configuration.userContentController.add(
+            WeakScriptMessageHandler(self),
+            name: LocationBridge.messageHandler
         )
 
         // iPhones have no back button, so without the edge swipe a screen with
@@ -117,6 +128,12 @@ class PeckersBridgeViewController: CAPBridgeViewController {
 
 extension PeckersBridgeViewController: WKScriptMessageHandler {
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        if message.name == LocationBridge.messageHandler {
+            // The shim is injected into the main frame only; an iframe has no
+            // business asking for the device's position.
+            if message.frameInfo.isMainFrame { locationBridge?.handle(message.body) }
+            return
+        }
         guard message.name == Self.themeHandler, let theme = message.body as? String else { return }
         switch theme {
         case "dark": pageStatusBarStyle = .lightContent
